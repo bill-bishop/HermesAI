@@ -1,0 +1,24 @@
+@import "bootstrap/dist/css/bootstrap.min.css";
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f8f9fa;
+}
+
+.hero {
+  background: linear-gradient(120deg, #007bff, #6610f2);
+  color: white;
+  padding: 5rem 1rem;
+  text-align: center;
+}
+
+.features {
+  padding: 4rem 1rem;
+}
+
+footer {
+  background: #343a40;
+  color: white;
+  padding: 2rem 1rem;
+  text-align: center;
+}
