@@ -1,8 +1,8 @@
 module.exports = {
   transform: {
-    '^.+\\.(ts|tsx)$': 'babel-jest',
-    '^.+\\.(js|jsx)$': 'babel-jest',
-    '^.+\\.(mjs)$': 'babel-jest',
+    '^.+\\.(ts|tsx)$': 'ts-jest',
+    '^.+\\.(mjs|js)$': 'babel-jest',
+    '^.+\\.(html)$': 'ts-jest',
   },
   testEnvironment: 'jsdom',
   roots: ['<rootDir>/src/'],
@@ -10,6 +10,9 @@ module.exports = {
   setupFilesAfterEnv: ['<rootDir>/src/setup-jest.ts'],
   verbose: true,
   transformIgnorePatterns: [
-    'node_modules/(?!@angular|@testing-library)'
+    'node_modules/(?!@angular|rxjs)'
   ],
+  moduleNameMapper: {
+    '\\.(html|scss)$': 'jest-transform-stub',
+  },
 };
