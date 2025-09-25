@@ -1,0 +1,3 @@
+[submodule "apps/execution-sandbox"]
+	path = apps/execution-sandbox
+	url = https://github.com/bill-bishop/execution-sandbox.git
