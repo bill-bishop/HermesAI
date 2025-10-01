@@ -1,0 +1,17 @@
+<div class="auth-form">
+  <h2>Register</h2>
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <label>Email</label>
+    <input type="email" formControlName="email">
+
+    <label>Password</label>
+    <input type="password" formControlName="password">
+
+    <label>Confirm Password</label>
+    <input type="password" formControlName="confirmPassword">
+
+    <button type="submit">Register</button>
+  </form>
+
+  <div *ngIf="error" class="error">{{ error }}</div>
+</div>

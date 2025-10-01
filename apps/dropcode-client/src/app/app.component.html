@@ -1,8 +1,20 @@
+<nav class="navbar navbar-expand navbar-light bg-light">
+  <div class="container">
+    <a class="navbar-brand" routerLink="/">DropCode</a>
+    <div class="navbar-nav ms-auto">
+      <a class="nav-link" routerLink="/login">Login</a>
+      <a class="nav-link" routerLink="/register">Register</a>
+    </div>
+  </div>
+</nav>
+
 <div class="hero">
   <h1 class="display-3 fw-bold">Welcome to DropCode</h1>
   <p class="lead">Your secure sandboxed coding environment</p>
   <a class="btn btn-light btn-lg mt-3" href="#features">Learn More</a>
 </div>
+
+<router-outlet></router-outlet>
 
 <div id="features" class="features container text-center">
   <div class="row">

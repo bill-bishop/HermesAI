@@ -1,0 +1,14 @@
+<div class="auth-form">
+  <h2>Login</h2>
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <label>Email</label>
+    <input type="email" formControlName="email">
+
+    <label>Password</label>
+    <input type="password" formControlName="password">
+
+    <button type="submit">Login</button>
+  </form>
+
+  <div *ngIf="error" class="error">{{ error }}</div>
+</div>

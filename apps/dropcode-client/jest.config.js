@@ -1,18 +1,11 @@
 module.exports = {
-  transform: {
-    '^.+\\.(ts|tsx)$': 'ts-jest',
-    '^.+\\.(mjs|js)$': 'babel-jest',
-    '^.+\\.(html)$': 'ts-jest',
-  },
+  preset: 'jest-preset-angular',
+  globalSetup: 'jest-preset-angular/global-setup', // Essential for modern versions
+  setupFilesAfterEnv: ['<rootDir>/src/setup-jest.ts'],
   testEnvironment: 'jsdom',
   roots: ['<rootDir>/src/'],
-  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node', 'mjs'],
-  setupFilesAfterEnv: ['<rootDir>/src/setup-jest.ts'],
-  verbose: true,
-  transformIgnorePatterns: [
-    'node_modules/(?!@angular|rxjs)'
-  ],
-  moduleNameMapper: {
-    '\\.(html|scss)$': 'jest-transform-stub',
+  moduleFileExtensions: ['ts', 'js', 'html', 'json'],
+  transform: {
+    '^.+\\.(ts|js|html)$': 'ts-jest',
   },
 };
