@@ -1,44 +1,45 @@
 import { Component } from '@angular/core';
-import { FormBuilder, Validators, ReactiveFormsModule } from '@angular/forms';
-import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { AuthService } from './auth.service';
+import { ThirdPartyAuthComponent } from './third-party-auth/third-party-auth.component';
 
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, RouterLinkActive],
-  templateUrl: './register.component.html',
-  styleUrls: ['./register.component.scss']
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, ThirdPartyAuthComponent],
+  templateUrl: './register.component.html'
 })
 export class RegisterComponent {
-  form;
   error: string | null = null;
+  form;
 
-  constructor(private fb: FormBuilder, private auth: AuthService, private router: Router) {
+  constructor(private fb: FormBuilder, private auth: AuthService) {
     this.form = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
       password: ['', Validators.required],
-      confirmPassword: ['', Validators.required]
+      confirmPassword: ['', Validators.required],
     });
   }
 
-  submit(): void {
-    if (this.form.invalid) return;
-    const { password, confirmPassword } = this.form.value;
-    if (password !== confirmPassword) {
-      this.error = 'Passwords do not match';
-      return;
-    }
-
-    this.auth.register(this.form.value as any).subscribe({
-      next: (res) => {
-        this.auth.setToken(res.token);
-        this.router.navigateByUrl('/');
-      },
-      error: () => {
-        this.error = 'Registration failed';
+  submit() {
+    if (this.form.valid) {
+      const { email, password, confirmPassword } = this.form.value;
+      if (password !== confirmPassword) {
+        this.error = 'Passwords do not match';
+        return;
       }
-    });
+      this.auth.register({
+        email: email || '',
+        password: password || '',
+        confirmPassword: confirmPassword || ''
+      }).subscribe({
+        next: () => console.log('Registration successful'),
+        error: () => this.error = 'Registration failed'
+      });
+    } else {
+      this.error = 'Please fill out the form correctly';
+    }
   }
 }

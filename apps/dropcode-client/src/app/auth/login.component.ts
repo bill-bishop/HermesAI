@@ -1,37 +1,36 @@
 import { Component } from '@angular/core';
-import { FormBuilder, Validators, ReactiveFormsModule } from '@angular/forms';
-import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { AuthService } from './auth.service';
+import { ThirdPartyAuthComponent } from './third-party-auth/third-party-auth.component';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, RouterLinkActive],
-  templateUrl: './login.component.html',
-  styleUrls: ['./login.component.scss']
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, ThirdPartyAuthComponent],
+  templateUrl: './login.component.html'
 })
 export class LoginComponent {
-  form;
   error: string | null = null;
+  form;
 
-  constructor(private fb: FormBuilder, private auth: AuthService, private router: Router) {
+  constructor(private fb: FormBuilder, private auth: AuthService) {
     this.form = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
-      password: ['', Validators.required]
+      password: ['', Validators.required],
     });
   }
 
-  submit(): void {
-    if (this.form.invalid) return;
-    this.auth.login(this.form.value as any).subscribe({
-      next: (res) => {
-        this.auth.setToken(res.token);
-        this.router.navigateByUrl('/');
-      },
-      error: () => {
-        this.error = 'Invalid credentials';
-      }
-    });
+  submit() {
+    if (this.form.valid) {
+      const { email, password } = this.form.value;
+      this.auth.login({ email: email || '', password: password || '' }).subscribe({
+        next: () => console.log('Login successful'),
+        error: () => this.error = 'Login failed'
+      });
+    } else {
+      this.error = 'Please enter valid credentials';
+    }
   }
 }
