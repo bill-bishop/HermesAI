@@ -6,54 +6,42 @@ import { tap } from 'rxjs/operators';
 export interface User {
   id: number;
   email: string;
-  provider?: string;
-  provider_id?: string;
-  login?: string;        // GitHub username
-  avatar_url?: string;   // GitHub avatar
+  login?: string;
+  avatarUrl?: string;
 }
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private currentUserSubject = new BehaviorSubject<User | null>(null);
+  private currentUserSubject = new BehaviorSubject<User | null | undefined>(undefined);
   public currentUser$ = this.currentUserSubject.asObservable();
 
   constructor(private http: HttpClient) {
-    // Try to load user on startup
+    // On init, try to fetch current user
     this.me().subscribe({
       next: (user) => this.currentUserSubject.next(user),
-      error: () => this.currentUserSubject.next(null)
+      error: () => this.currentUserSubject.next(null),
     });
   }
 
-  login(credentials: { email: string; password: string }): Observable<any> {
+  login(credentials: { email: string; password: string }) {
     return this.http.post<User>('/api/auth/login', credentials, { withCredentials: true }).pipe(
       tap((user) => this.currentUserSubject.next(user))
     );
   }
 
-  register(credentials: { email: string; password: string; confirmPassword: string }): Observable<any> {
+  register(credentials: { email: string; password: string; confirmPassword: string }) {
     return this.http.post<User>('/api/auth/register', credentials, { withCredentials: true }).pipe(
       tap((user) => this.currentUserSubject.next(user))
     );
   }
 
   me(): Observable<User> {
-    return this.http.get<User>('/api/auth/me', {
-      headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
-    });
+    return this.http.get<User>('/api/auth/me', { withCredentials: true });
   }
 
-  logout(): Observable<any> {
+  logout() {
     return this.http.post('/api/auth/logout', {}, { withCredentials: true }).pipe(
       tap(() => this.currentUserSubject.next(null))
     );
-  }
-
-  isAuthenticated(): boolean {
-    return this.currentUserSubject.value !== null;
-  }
-
-  getCurrentUser(): User | null {
-    return this.currentUserSubject.value;
   }
 }

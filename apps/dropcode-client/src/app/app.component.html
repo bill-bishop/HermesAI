@@ -28,7 +28,7 @@
         <ul class="navbar-nav ms-auto">
           <li class="nav-item dropdown" *ngIf="auth.currentUser$ | async as user">
             <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-              <img *ngIf="user.avatar_url" [src]="user.avatar_url" class="rounded-circle me-2" width="28" height="28" alt="avatar">
+              <img *ngIf="user.avatarUrl" [src]="user.avatarUrl" class="rounded-circle me-2" width="28" height="28" alt="avatar">
               {{ user.login || user.email }}
             </a>
             <ul class="dropdown-menu dropdown-menu-end">
