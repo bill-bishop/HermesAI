@@ -1,50 +1,46 @@
-<nav class="navbar navbar-expand navbar-light bg-light">
-  <div class="container">
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <div class="container-fluid">
     <a class="navbar-brand" routerLink="/">DropCode</a>
-    <div class="navbar-nav ms-auto">
-      <a class="nav-link" routerLink="/login" routerLinkActive="active">Login</a>
-      <a class="nav-link" routerLink="/register" routerLinkActive="active">Register</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/">Home</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/features">Features</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/pricing">Pricing</a>
+        </li>
+      </ul>
+      <ul class="navbar-nav ms-auto" *ngIf="!(auth.currentUser$ | async); else loggedIn">
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/login">Login</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/register">Register</a>
+        </li>
+      </ul>
+      <ng-template #loggedIn>
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item dropdown" *ngIf="auth.currentUser$ | async as user">
+            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <img *ngIf="user.avatar_url" [src]="user.avatar_url" class="rounded-circle me-2" width="28" height="28" alt="avatar">
+              {{ user.login || user.email }}
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" (click)="auth.logout().subscribe()">Logout</a></li>
+            </ul>
+          </li>
+        </ul>
+      </ng-template>
     </div>
   </div>
 </nav>
 
-<div class="hero">
-  <h1 class="display-3 fw-bold">Welcome to DropCode</h1>
-  <p class="lead">Your secure sandboxed coding environment</p>
-  <a class="btn btn-light btn-lg mt-3" href="#features">Learn More</a>
+<div class="container mt-4">
+  <router-outlet></router-outlet>
 </div>
-
-<router-outlet></router-outlet>
-
-<div id="features" class="features container text-center">
-  <div class="row">
-    <div class="col-md-4 mb-4">
-      <div class="card h-100 shadow-sm">
-        <div class="card-body">
-          <h5 class="card-title">⚡ Fast</h5>
-          <p class="card-text">Run your code in an isolated environment with blazing speed.</p>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-4 mb-4">
-      <div class="card h-100 shadow-sm">
-        <div class="card-body">
-          <h5 class="card-title">🔒 Secure</h5>
-          <p class="card-text">All execution happens inside a locked-down container.</p>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-4 mb-4">
-      <div class="card h-100 shadow-sm">
-        <div class="card-body">
-          <h5 class="card-title">🌐 Accessible</h5>
-          <p class="card-text">Access your sandbox from anywhere using your domain + Cloudflare tunnel.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<footer>
-  <p>© 2025 DropCode. All rights reserved.</p>
-</footer>

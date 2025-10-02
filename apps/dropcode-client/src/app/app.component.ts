@@ -1,13 +1,15 @@
 import { Component } from '@angular/core';
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { RouterOutlet } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { AuthService } from './auth/auth.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [CommonModule, RouterOutlet],
   templateUrl: './app.component.html',
   styleUrls: ['./app.scss']
 })
 export class AppComponent {
-  title = 'dropcode-client';
+  constructor(public auth: AuthService) {}
 }

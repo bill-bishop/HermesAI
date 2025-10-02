@@ -1,45 +1,59 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
 
-export interface LoginRequest {
+export interface User {
+  id: number;
   email: string;
-  password: string;
-}
-
-export interface RegisterRequest {
-  email: string;
-  password: string;
-  confirmPassword: string;
-}
-
-export interface AuthResponse {
-  token: string;
+  provider?: string;
+  provider_id?: string;
+  login?: string;        // GitHub username
+  avatar_url?: string;   // GitHub avatar
 }
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private baseUrl = '/api/auth'; // adjust backend URL if needed
+  private currentUserSubject = new BehaviorSubject<User | null>(null);
+  public currentUser$ = this.currentUserSubject.asObservable();
 
-  constructor(private http: HttpClient) {}
-
-  login(data: LoginRequest): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.baseUrl}/login`, data);
+  constructor(private http: HttpClient) {
+    // Try to load user on startup
+    this.me().subscribe({
+      next: (user) => this.currentUserSubject.next(user),
+      error: () => this.currentUserSubject.next(null)
+    });
   }
 
-  register(data: RegisterRequest): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.baseUrl}/register`, data);
+  login(credentials: { email: string; password: string }): Observable<any> {
+    return this.http.post<User>('/api/auth/login', credentials, { withCredentials: true }).pipe(
+      tap((user) => this.currentUserSubject.next(user))
+    );
   }
 
-  logout(): void {
-    localStorage.removeItem('token');
+  register(credentials: { email: string; password: string; confirmPassword: string }): Observable<any> {
+    return this.http.post<User>('/api/auth/register', credentials, { withCredentials: true }).pipe(
+      tap((user) => this.currentUserSubject.next(user))
+    );
   }
 
-  setToken(token: string): void {
-    localStorage.setItem('token', token);
+  me(): Observable<User> {
+    return this.http.get<User>('/api/auth/me', {
+      headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
+    });
   }
 
-  getToken(): string | null {
-    return localStorage.getItem('token');
+  logout(): Observable<any> {
+    return this.http.post('/api/auth/logout', {}, { withCredentials: true }).pipe(
+      tap(() => this.currentUserSubject.next(null))
+    );
+  }
+
+  isAuthenticated(): boolean {
+    return this.currentUserSubject.value !== null;
+  }
+
+  getCurrentUser(): User | null {
+    return this.currentUserSubject.value;
   }
 }

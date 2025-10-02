@@ -2,15 +2,19 @@ import { TestBed } from '@angular/core/testing';
 import { AppComponent } from './app.component';
 import { RouterTestingModule } from '@angular/router/testing';
 import { CommonModule } from '@angular/common';
+import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { AuthService } from './auth/auth.service';
 
 describe('AppComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [
         CommonModule,
-        RouterTestingModule.withRoutes([]), // ✅ provides ActivatedRoute and router services
+        HttpClientTestingModule,
+        RouterTestingModule.withRoutes([]),
         AppComponent
       ],
+      providers: [AuthService]
     }).compileComponents();
   });
 
