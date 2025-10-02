@@ -24,18 +24,17 @@ describe('AppComponent', () => {
     expect(app).toBeTruthy();
   });
 
-  it('should render the hero headline', () => {
+  it('should render the navbar brand', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('.hero h1')?.textContent).toContain('Welcome to DropCode');
+    expect(compiled.querySelector('.navbar-brand')?.textContent).toContain('DropCode');
   });
 
-  it('should render three feature cards', () => {
+  it('should contain a router outlet', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    const cards = compiled.querySelectorAll('.card');
-    expect(cards.length).toBe(3);
+    expect(compiled.querySelector('router-outlet')).not.toBeNull();
   });
 });
