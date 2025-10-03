@@ -22,7 +22,7 @@ export class HomeComponent {
     });
   }
 
-  @HostListener('window:hashchange', ['$event'])
+  @HostListener('window:hashchange')
   onHashChange() {
     const fragment = window.location.hash.replace('#', '');
     if (fragment) {
