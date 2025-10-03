@@ -23,6 +23,14 @@ export class AuthService {
     });
   }
 
+  /**
+   * Start GitHub login, preserving optional target path
+   */
+  loginWithGithub(target?: string) {
+    const url = `/api/auth/redirect/github${target ? `?target=${encodeURIComponent(target)}` : ''}`;
+    window.location.href = url;
+  }
+
   login(credentials: { email: string; password: string }) {
     return this.http.post<User>('/api/auth/login', credentials, { withCredentials: true }).pipe(
       tap((user) => this.currentUserSubject.next(user))

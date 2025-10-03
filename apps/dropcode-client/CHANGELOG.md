@@ -3,6 +3,19 @@
 ## [Unreleased]
 - TBD
 
+## [0.3.2] - 2025-10-02
+### Added
+- Support for `target` query parameter on login page to redirect users back to their original destination after GitHub OAuth login.
+- `third-party-auth.component.ts` updated to use Angular `ActivatedRoute` for query param extraction.
+- `third-party-auth.component.html` updated to bind `[href]` dynamically with `target`.
+
+### Fixed
+- GitHub login flow now correctly forwards `target` state through OAuth and back to the app.
+
+## [0.3.1] - 2025-10-02
+### Fixed
+- Navbar hamburger toggle not working on mobile view due to missing Bootstrap JS import. Added `bootstrap.bundle.min.js` import in `main.ts` to enable collapse and dropdown functionality.
+
 ## [0.3.0] - 2025-10-02
 ### Added
 - Login and Registration components with reactive forms and Bootstrap styling.
