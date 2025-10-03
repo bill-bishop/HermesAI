@@ -4,6 +4,7 @@ import os
 import sys
 import time
 from datetime import datetime
+import requests
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 EXEC_SANDBOX_DIR = os.path.join(ROOT_DIR, "apps", "execution-sandbox")
@@ -60,6 +61,14 @@ def sync_and_check_new_commits(repo_dir):
     return local != remote
 
 
+def server_healthy():
+    try:
+        resp = requests.get("https://dropcode.org/api/healthcheck", timeout=5)
+        return resp.status_code == 200
+    except Exception:
+        return False
+
+
 def run_pipeline():
     for pipe in DOCKER_PIPELINES:
         print(f"[Watcher] Running pipeline: {pipe['name']}")
@@ -78,6 +87,20 @@ def main():
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         print(f"\n[Watcher] === Cycle start @ {ts} ===")
 
+        # If server is unhealthy, force pipeline run
+        if not server_healthy():
+            print("[Watcher] Healthcheck failed! Stashing pending changes and running CI.")
+            # Stash pending changes if any
+            if check_uncommitted_changes(ROOT_DIR):
+                subprocess.run(["git", "stash", "push", "-m", "watcher-autostash"], cwd=ROOT_DIR)
+            if check_uncommitted_changes(EXEC_SANDBOX_DIR):
+                subprocess.run(["git", "stash", "push", "-m", "watcher-autostash"], cwd=EXEC_SANDBOX_DIR)
+            run_pipeline()
+            print("[Watcher] Sleeping for 60 seconds...")
+            time.sleep(60)
+            continue
+
+        # Normal flow: check for commits
         if check_uncommitted_changes(ROOT_DIR):
             print("Uncommitted changes in monorepo root. Aborting this cycle.")
             time.sleep(60)
