@@ -2,21 +2,39 @@
 import subprocess
 import os
 import sys
+import time
+from datetime import datetime
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 EXEC_SANDBOX_DIR = os.path.join(ROOT_DIR, "apps", "execution-sandbox")
 
-# Docker commands from execution-sandbox/README.md
-DOCKER_COMMANDS = [
-    "docker build -t sandbox_server:nightly sandbox_server && docker kill sandbox || true && sleep 3 && docker run --rm -d --network sandbox-net --name sandbox -v %CD%/../../:/sandbox --env-file .env sandbox_server:nightly",
-    "cd ../dropcode-client && npm run build && cd ../../ && cp -R assets apps/execution-sandbox/terminal/html/ && cp apps/execution-sandbox/terminal/html/assets/favicon.ico apps/execution-sandbox/terminal/html/ && cd apps/execution-sandbox && docker build -t terminal:nightly terminal && docker kill sandbox-router || true && sleep 3 && docker run --rm -d --network sandbox-net --name sandbox-router -p 80:80 terminal:nightly"
+# Split Docker pipeline into steps (build -> kill -> pause -> run)
+DOCKER_PIPELINES = [
+    {
+        "name": "sandbox_server",
+        "build": "docker build -t sandbox_server:nightly sandbox_server",
+        "kill": "docker kill sandbox || true",
+        "pause": "sleep 3",
+        "run": "docker run --rm -d --network sandbox-net --name sandbox -v %CD%/../../:/sandbox --env-file .env sandbox_server:nightly",
+    },
+    {
+        "name": "terminal",
+        "build": "cd ../dropcode-client && npm run build && cd ../../ && cp -R assets apps/execution-sandbox/terminal/html/ && cp apps/execution-sandbox/terminal/html/assets/favicon.ico apps/execution-sandbox/terminal/html/ && cd apps/execution-sandbox && docker build -t terminal:nightly terminal",
+        "kill": "docker kill sandbox-router || true",
+        "pause": "sleep 3",
+        "run": "docker run --rm -d --network sandbox-net --name sandbox-router -p 80:80 terminal:nightly",
+    },
 ]
 
 
-def run(cmd, cwd=None):
+def run(cmd, cwd=None, abort_on_fail=False):
     print(f"\n[CMD] {cmd}")
     result = subprocess.run(cmd, shell=True, cwd=cwd)
-    return result.returncode == 0
+    if result.returncode != 0:
+        print(f"[Watcher] Command failed: {cmd}")
+        if abort_on_fail:
+            return False
+    return True
 
 
 def check_uncommitted_changes(repo_dir):
@@ -42,33 +60,46 @@ def sync_and_check_new_commits(repo_dir):
     return local != remote
 
 
+def run_pipeline():
+    for pipe in DOCKER_PIPELINES:
+        print(f"[Watcher] Running pipeline: {pipe['name']}")
+        # Build must succeed, otherwise abort this pipeline
+        if not run(pipe["build"], cwd=EXEC_SANDBOX_DIR, abort_on_fail=True):
+            print(f"[Watcher] Build failed for {pipe['name']}, skipping remaining steps.")
+            continue
+        # Kill, pause, and run can fail without aborting CI
+        run(pipe["kill"], cwd=EXEC_SANDBOX_DIR)
+        run(pipe["pause"], cwd=EXEC_SANDBOX_DIR)
+        run(pipe["run"], cwd=EXEC_SANDBOX_DIR)
+
+
 def main():
-    print("[Watcher] Checking for uncommitted changes...")
-    if check_uncommitted_changes(ROOT_DIR):
-        print("Uncommitted changes in monorepo root. Aborting.")
-        sys.exit(1)
-    if check_uncommitted_changes(EXEC_SANDBOX_DIR):
-        print("Uncommitted changes in execution-sandbox. Aborting.")
-        sys.exit(1)
+    while True:
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        print(f"\n[Watcher] === Cycle start @ {ts} ===")
 
-    print("[Watcher] Checking for new commits...")
-    root_new = sync_and_check_new_commits(ROOT_DIR)
-    sandbox_new = sync_and_check_new_commits(EXEC_SANDBOX_DIR)
+        if check_uncommitted_changes(ROOT_DIR):
+            print("Uncommitted changes in monorepo root. Aborting this cycle.")
+            time.sleep(60)
+            continue
+        if check_uncommitted_changes(EXEC_SANDBOX_DIR):
+            print("Uncommitted changes in execution-sandbox. Aborting this cycle.")
+            time.sleep(60)
+            continue
 
-    if not (root_new or sandbox_new):
-        print("No new commits. Nothing to do.")
-        return
+        print("[Watcher] Checking for new commits...")
+        root_new = sync_and_check_new_commits(ROOT_DIR)
+        sandbox_new = sync_and_check_new_commits(EXEC_SANDBOX_DIR)
 
-    print("New commits detected! Running nightly Docker build + run pipeline.")
+        if root_new or sandbox_new:
+            print("New commits detected! Running nightly Docker pipelines.")
+            run_pipeline()
+        else:
+            print("No new commits detected.")
 
-    # Execute docker commands sequentially
-    for cmd in DOCKER_COMMANDS:
-        success = run(cmd, cwd=EXEC_SANDBOX_DIR)
-        if not success:
-            print("[Watcher] Command failed, aborting pipeline.")
-            sys.exit(1)
-
-    print("[Watcher] Nightly pipeline finished successfully.")
+        # Sleep before checking again
+        print("[Watcher] Sleeping for 60 seconds...")
+        time.sleep(60)
 
 
 if __name__ == "__main__":
