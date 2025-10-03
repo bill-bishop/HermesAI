@@ -1,6 +1,6 @@
-# DropCode Monorepo
+# HermesAI Monorepo
 
-DropCode is a **Dropbox-style app for developers** that provides seamless file sync, GitHub integration, and GPT-powered coding assistance. It is designed as a monorepo for easier development and collaboration.
+HermesAI is a **Dropbox-style app for developers** that provides seamless file sync, GitHub integration, and GPT-powered coding assistance. It is designed as a monorepo for easier development and collaboration.
 
 ---
 

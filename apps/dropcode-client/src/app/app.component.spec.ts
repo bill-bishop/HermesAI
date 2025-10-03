@@ -28,7 +28,7 @@ describe('AppComponent', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('.navbar-brand')?.textContent).toContain('DropCode');
+    expect(compiled.querySelector('.navbar-brand')?.textContent).toContain('HermesAI');
   });
 
   it('should contain a router outlet', () => {

@@ -1,6 +1,6 @@
-# DropCode Server
+# HermesAI Server
 
-This is the **DropCode server application**.
+This is the **HermesAI server application**.
 
 ## Responsibilities
 - Manage file sync and metadata

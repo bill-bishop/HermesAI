@@ -1,6 +1,6 @@
 # GitHub Integration
 
-The **GitHub Integration** package provides seamless connectivity between DropCode and GitHub.
+The **GitHub Integration** package provides seamless connectivity between HermesAI and GitHub.
 
 ## Features
 - Auto-commit changes on interval or debounce

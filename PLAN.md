@@ -1,6 +1,6 @@
 # Project Plan & Context
 
-This document summarizes the architecture, quirks, and next steps for the DropCode monorepo.
+This document summarizes the architecture, quirks, and next steps for the HermesAI monorepo.
 
 ## Monorepo Structure
 - **apps/dropcode-client**: Angular 20 frontend (standalone components, Bootstrap theme).
@@ -61,7 +61,7 @@ This ensures the CI daemon sees both repos updated, pushes them upstream, and tr
 - The **Canvas** provides a live preview area for standalone HTML/JS/CSS apps or tests.
 - Agent workflow:
   1. Write HTML/JS/CSS files to `/.canvas/index.html` (and optional assets under `/.canvas/assets/`).
-  2. Navigate to `https://dropcode.org/canvas` in the Angular UI.
+  2. Navigate to `https://hermesai.dev/canvas` in the Angular UI.
   3. The frontend will fetch `/api/canvas` and render it in an iframe.
 - This enables quick standalone prototyping without touching main Angular/Flask code.
 

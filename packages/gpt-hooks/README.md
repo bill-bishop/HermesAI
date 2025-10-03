@@ -1,6 +1,6 @@
 # GPT Hooks
 
-The **GPT Hooks** package provides integration between DropCode workspaces and GPT instances.
+The **GPT Hooks** package provides integration between HermesAI workspaces and GPT instances.
 
 ## Features
 - Local reverse proxy to connect workspace with GPT

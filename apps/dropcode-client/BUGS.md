@@ -1,4 +1,4 @@
-# DropCode Client – Debug Retrospective
+# HermesAI Client – Debug Retrospective
 
 This document catalogs the changes that failed during implementation or testing.
 

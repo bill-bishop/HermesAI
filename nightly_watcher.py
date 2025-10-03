@@ -63,7 +63,7 @@ def sync_and_check_new_commits(repo_dir):
 
 def server_healthy():
     try:
-        resp = requests.get("https://dropcode.org/api/healthcheck", timeout=5)
+        resp = requests.get("https://hermesai.dev/api/healthcheck", timeout=5)
         return resp.status_code == 200
     except Exception:
         return False
@@ -96,7 +96,7 @@ def restart_tunnel():
                 except Exception:
                     pass
         # Start tunnel
-        subprocess.Popen("cloudflared tunnel run dropcode-tunnel", shell=True)
+        subprocess.Popen("cloudflared tunnel run hermesai", shell=True)
     except Exception as e:
         print(f"[Watcher] Failed to restart tunnel: {e}")
 
