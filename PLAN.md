@@ -46,6 +46,13 @@ This document summarizes the architecture, quirks, and next steps for the DropCo
 2. Define a Flask Blueprint, register it in `app.py`.
 3. Update Nginx if you need `/api/...` paths exposed.
 
+## Commit Process (Important for Agents)
+When making changes, agents must commit in **two steps** so the CI daemon can detect, push, and redeploy:
+1. Commit changes inside **`/sandbox/apps/execution-sandbox`** (the submodule).
+2. Commit the updated **submodule pointer** inside **`/sandbox`** (the monorepo root).
+
+This ensures the CI daemon sees both repos updated, pushes them upstream, and triggers a redeploy of the application.
+
 ## Next Steps
 - **Grace’s Tasks (Product/UX):**
   - Draft new homepage copy.
