@@ -49,11 +49,12 @@ This document summarizes the architecture, quirks, and next steps for the DropCo
 ## Next Steps
 - **Grace’s Tasks (Product/UX):**
   - Draft new homepage copy.
-  - Create homepage wireframe.
+  - **[CURRENT TASK] Create homepage wireframe.**
   - Draft new feature page copy.
   - Create feature page wireframe.
   - Draft new pricing page copy.
   - Create pricing page wireframe.
+  - Investigate Socket.IO disconnect / cannot send message errors (frontend error handling & UX impact).
 
 - **Bill’s Tasks (Architecture/Backend/Engineering):**
   - Flesh out Home/Features/Pricing components with real app content.
@@ -64,6 +65,7 @@ This document summarizes the architecture, quirks, and next steps for the DropCo
   - Harden Nginx config (CSP headers, rate limiting, etc.).
   - CI/CD pipeline for building Angular + deploying Flask/Nginx container.
   - Build **User** and **Workspace** tables in the backend DB.
+  - Add Kubernetes config + healthcheck endpoints for container orchestration and monitoring.
   - **[CURRENT TASK] Integrate user authentication with workspace selection:**
     - Add `workspace_id` to JWT tokens.
     - Ensure `/auth/me` includes the selected workspace.
@@ -72,6 +74,10 @@ This document summarizes the architecture, quirks, and next steps for the DropCo
       - Currently all users share one global sandbox (`http://sandbox:8080`).
       - Spin up **one container per test user** with a deterministic internal URL.
       - Update Nginx upstreams or reverse proxy logic to map `workspace_id → container URL`.
+  - **Add Git Hook for Server Reload:**
+    - Implement a post-receive (or CI/CD hook) that automatically reloads the Flask + Nginx server when new commits are pushed.
+    - Ensure safe zero-downtime reload (e.g., `nginx -s reload` and Flask/Gunicorn reload).
+    - Security: whitelist repo origin, ensure only trusted pushes trigger reload.
 
 ---
 
