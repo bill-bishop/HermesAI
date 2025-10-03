@@ -64,15 +64,91 @@ This document summarizes the architecture, quirks, and next steps for the DropCo
   - Harden Nginx config (CSP headers, rate limiting, etc.).
   - CI/CD pipeline for building Angular + deploying Flask/Nginx container.
   - Build **User** and **Workspace** tables in the backend DB.
-  - Integrate user authentication with workspace selection:
+  - **[CURRENT TASK] Integrate user authentication with workspace selection:**
     - Add `workspace_id` to JWT tokens.
     - Ensure `/auth/me` includes the selected workspace.
-  - Update **Nginx ↔ Flask handoff** so that Nginx routes requests to a container URL based on `workspace_id`.
-  - Implement deterministic container routing:
-    - Currently all users share one global sandbox (`http://sandbox:8080`).
-    - Spin up **one container per test user** with a deterministic internal URL.
-    - Update Nginx upstreams or reverse proxy logic to map `workspace_id → container URL`.
-  - **[CURRENT TASK] Fix ANSI formatting issues in the terminal UI.**
+    - Update **Nginx ↔ Flask handoff** so that Nginx routes requests to a container URL based on `workspace_id`.
+    - Implement deterministic container routing:
+      - Currently all users share one global sandbox (`http://sandbox:8080`).
+      - Spin up **one container per test user** with a deterministic internal URL.
+      - Update Nginx upstreams or reverse proxy logic to map `workspace_id → container URL`.
+
+---
+
+## MVP Spec: User Authentication + Workspace Integration
+
+For the MVP, container lifecycle will be **manual** (admin spins up per-user containers). Our goal is to wire up the backend + Nginx so that each authenticated user is bound to their own container.
+
+### 1. Database Changes
+- Extend **User** table:
+  - `id`: int, primary key.
+  - `email`, `password_hash`, etc.
+- New **Workspace** table:
+  - `id`: int, primary key.
+  - `user_id`: FK → User.id.
+  - `container_url`: string (e.g., `http://sandbox-user1:8080`).
+  - `created_at`, `updated_at`.
+
+### 2. Authentication Flow Changes
+- On login/register:
+  - Fetch or create a `Workspace` for the user.
+  - Include `workspace_id` in the JWT payload.
+  - Issue cookie with both `sub` (user_id) and `workspace_id`.
+- `/auth/me`:
+  - Return `{ user, workspace }` where workspace includes container_url.
+
+### 3. Backend Changes (Flask)
+- Add `Workspace` model in `models.py`.
+- Modify `auth.py` and registration flow to auto-create a workspace row.
+- Update JWT generation:
+  ```python
+  additional_claims = { "workspace_id": workspace.id }
+  access_token = create_access_token(identity=user.id, additional_claims=additional_claims)
+  ```
+- Update `/auth/me` to return:
+  ```json
+  {
+    "id": 123,
+    "email": "user@example.com",
+    "workspace": {
+      "id": 456,
+      "container_url": "http://sandbox-user1:8080"
+    }
+  }
+  ```
+
+### 4. Nginx Changes
+- Define upstream blocks for each manually spun-up container:
+  ```nginx
+  upstream workspace_456 {
+    server sandbox-user1:8080;
+  }
+  ```
+- Use a **Lua script** or **nginx map** to select upstream based on JWT `workspace_id` claim:
+  - MVP: Hardcode mapping in nginx.conf.
+  - Later: dynamic lookup (e.g., Redis or shared dict).
+- Proxy requests to the correct container:
+  ```nginx
+  location /api/execute/ {
+    proxy_pass http://workspace_456;
+  }
+  ```
+
+### 5. Frontend Changes (Angular)
+- Update `AuthService`:
+  - Store both `user` and `workspace` in `currentUser$`.
+- Expose `workspace.container_url` so the UI can route API calls accordingly.
+- Ensure guards wait for workspace info before loading Home/Features/Pricing.
+
+### 6. Manual Container Management (for MVP)
+- Admin spins up containers manually, named predictably (e.g., `sandbox-user1`).
+- Insert `container_url` into DB for each workspace.
+- Nginx config updated manually with corresponding upstream.
+
+### 7. Future Extensions (post-MVP)
+- Automate container lifecycle (spin up/down on demand).
+- Dynamic Nginx upstreams via Lua + Redis.
+- Support multiple workspaces per user.
 
 ---
 This PLAN.md serves as context for future dev cycles and as a quick bootstrapping guide for new engineers or AI copilots.
