@@ -82,25 +82,43 @@ def run_pipeline():
         run(pipe["run"], cwd=EXEC_SANDBOX_DIR)
 
 
+def restart_tunnel():
+    print("[Watcher] Restarting cloudflared tunnel...")
+    try:
+        # Kill existing cloudflared processes (works if ps is available)
+        result = subprocess.run("ps -W | findstr cloudflared", shell=True, capture_output=True, text=True)
+        if result.returncode == 0:
+            for line in result.stdout.strip().splitlines():
+                try:
+                    pid = line.split()[1]
+                    print(f"[Watcher] Killing cloudflared PID {pid}")
+                    subprocess.run(f"taskkill /PID {pid} /F", shell=True)
+                except Exception:
+                    pass
+        # Start tunnel
+        subprocess.Popen("cloudflared tunnel run dropcode-tunnel", shell=True)
+    except Exception as e:
+        print(f"[Watcher] Failed to restart tunnel: {e}")
+
+
 def main():
     while True:
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         print(f"\n[Watcher] === Cycle start @ {ts} ===")
 
-        # If server is unhealthy, force pipeline run
-        if not server_healthy():
+        health_ok = server_healthy()
+        if not health_ok:
             print("[Watcher] Healthcheck failed! Stashing pending changes and running CI.")
-            # Stash pending changes if any
             if check_uncommitted_changes(ROOT_DIR):
                 subprocess.run(["git", "stash", "push", "-m", "watcher-autostash"], cwd=ROOT_DIR)
             if check_uncommitted_changes(EXEC_SANDBOX_DIR):
                 subprocess.run(["git", "stash", "push", "-m", "watcher-autostash"], cwd=EXEC_SANDBOX_DIR)
             run_pipeline()
+            restart_tunnel()
             print("[Watcher] Sleeping for 60 seconds...")
             time.sleep(60)
             continue
 
-        # Normal flow: check for commits
         if check_uncommitted_changes(ROOT_DIR):
             print("Uncommitted changes in monorepo root. Aborting this cycle.")
             time.sleep(60)
@@ -120,7 +138,6 @@ def main():
         else:
             print("No new commits detected.")
 
-        # Sleep before checking again
         print("[Watcher] Sleeping for 60 seconds...")
         time.sleep(60)
 
