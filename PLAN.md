@@ -81,6 +81,7 @@ This ensures the CI daemon sees both repos updated, pushes them upstream, and tr
   - Complete in-house auth (local user login/register backend logic).
   - Extend ThirdPartyAuthComponent with Google & Facebook providers.
   - Add refresh token support (currently only access tokens).
+  - refactor dropcode-client to be hermesai-client
   - Harden Nginx config (CSP headers, rate limiting, etc.).
   - CI/CD pipeline for building Angular + deploying Flask/Nginx container.
   - Build **User** and **Workspace** tables in the backend DB.
