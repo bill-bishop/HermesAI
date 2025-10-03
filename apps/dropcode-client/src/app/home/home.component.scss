@@ -1,0 +1,67 @@
+/* HermesAI Landing Page Styles */
+
+body {
+  background-color: #0b0b12;
+}
+
+.navbar {
+  backdrop-filter: blur(8px);
+}
+
+.btn-gradient {
+  background: linear-gradient(to right, #d946ef, #6366f1, #06b6d4);
+  color: #0b0b12;
+  border: none;
+  box-shadow: 0 8px 40px rgba(139, 92, 246, 0.35);
+}
+
+.btn-gradient:hover {
+  filter: brightness(1.1);
+}
+
+.gradient-text {
+  background: linear-gradient(to top right, #d946ef, #06b6d4, #fbbf24);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-section {
+  background-color: #0b0b12;
+  padding-top: 8rem;
+  padding-bottom: 6rem;
+}
+
+.terminal-section {
+  background: #0b0b12;
+  color: white;
+  padding: 3rem 0;
+}
+
+.terminal-window {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.terminal-output {
+  font-family: monospace;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+}
+
+.dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.feature-card,
+.trust-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+}
+
+footer a:hover {
+  text-decoration: underline;
+}
