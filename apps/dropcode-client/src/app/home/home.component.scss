@@ -65,3 +65,15 @@ body {
 footer a:hover {
   text-decoration: underline;
 }
+
+.rainbow-text {
+  background: linear-gradient(to top right, #ef4444, #f97316, #fbbf24, #22c55e, #06b6d4, #3b82f6, #8b5cf6, #d946ef);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+  font-family: math;
+  font-size: 1.8em;
+  margin: 0 0 -10px 1px;
+}
