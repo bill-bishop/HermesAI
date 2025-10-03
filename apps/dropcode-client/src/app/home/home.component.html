@@ -3,7 +3,7 @@
 <!-- HEADER / NAVBAR -->
 <header class="navbar navbar-expand-lg fixed-top navbar-dark bg-dark border-bottom border-light-subtle shadow-sm">
   <div class="container">
-    <a class="navbar-brand d-flex align-items-center" href="#">
+    <a class="navbar-brand d-flex align-items-center" routerLink="/">
       <img src="assets/logo.png" alt="HermesAI logo" width="32" height="32" class="me-2" />
       HermesAI
     </a>
@@ -20,12 +20,12 @@
     </button>
     <div class="collapse navbar-collapse" id="navbarNav">
       <ul class="navbar-nav ms-auto mb-2 mb-lg-0 align-items-lg-center">
-        <li class="nav-item"><a class="nav-link" href="#features">Features</a></li>
-        <li class="nav-item"><a class="nav-link" href="#pricing">Pricing</a></li>
-        <li class="nav-item"><a class="nav-link" href="#docs">Docs</a></li>
-        <li class="nav-item"><a class="nav-link" href="#login">Login</a></li>
+        <li class="nav-item"><a class="nav-link" routerLink="/features">Features</a></li>
+        <li class="nav-item"><a class="nav-link" routerLink="/pricing">Pricing</a></li>
+        <li class="nav-item"><a class="nav-link" routerLink="/docs">Docs</a></li>
+        <li class="nav-item"><a class="nav-link" routerLink="/login">Login</a></li>
         <li class="nav-item ms-lg-3">
-          <a class="btn btn-gradient px-3 py-1 fw-semibold" href="#get-started">Get Started Free</a>
+          <a class="btn btn-gradient px-3 py-1 fw-semibold" routerLink="/register">Get Started Free</a>
         </li>
       </ul>
     </div>
@@ -45,8 +45,8 @@
       accountability.
     </p>
     <div class="d-flex justify-content-center gap-3 mb-3 flex-wrap">
-      <a class="btn btn-light text-dark px-4 py-2 fw-semibold" href="#get-started">Try Hermes Free</a>
-      <a class="btn btn-outline-light px-4 py-2 fw-semibold" href="#docs">View Docs</a>
+      <a class="btn btn-light text-dark px-4 py-2 fw-semibold" routerLink="/register">Try Hermes Free</a>
+      <a class="btn btn-outline-light px-4 py-2 fw-semibold" routerLink="/docs">View Docs</a>
     </div>
     <div class="text-white-50 small">Transparent execution • Unified sandbox • Enterprise-ready</div>
   </div>
@@ -71,6 +71,22 @@ $ hermes run "setup repo + create CI"
 [actions] opened PR #128 • added CI pipeline
 $
       </pre>
+    </div>
+  </div>
+</section>
+
+<!-- CANVAS PREVIEW SECTION -->
+<section class="py-5 bg-light border-top border-light-subtle">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-md-8 text-center">
+        <img src="assets/canvas.png" alt="Canvas Preview" class="img-fluid rounded shadow-sm mb-4" />
+        <h2 class="h4 fw-semibold">Canvas Preview</h2>
+        <p class="text-muted">
+          Test standalone HTML/JS apps in a live preview environment, right inside DropCode.
+        </p>
+        <a routerLink="/canvas" class="btn btn-primary mt-2">Open Canvas</a>
+      </div>
     </div>
   </div>
 </section>
@@ -168,7 +184,7 @@ $
 <section id="pricing" class="py-5 text-center bg-light">
   <div class="container">
     <p class="lead text-muted">From solo travelers to enterprise fleets — HermesAI scales with you.</p>
-    <a href="#" class="btn btn-gradient px-4 py-2 fw-semibold mt-3">View Pricing</a>
+    <a routerLink="/pricing" class="btn btn-gradient px-4 py-2 fw-semibold mt-3">View Pricing</a>
   </div>
 </section>
 
@@ -176,7 +192,7 @@ $
 <section class="py-5 bg-dark text-white border-top border-light-subtle text-center">
   <div class="container">
     <h3 class="h5 fw-semibold">HermesAI turns AI into a visible teammate — not a black box.</h3>
-    <a class="btn btn-light text-dark px-4 py-2 fw-semibold mt-3" href="#get-started">Get Started Free</a>
+    <a class="btn btn-light text-dark px-4 py-2 fw-semibold mt-3" routerLink="/register">Get Started Free</a>
   </div>
 </section>
 
@@ -188,11 +204,11 @@ $
       <span>© 2025 HermesAI</span>
     </div>
     <div class="d-flex gap-3 small">
-      <a href="#" class="text-reset">About</a>
-      <a href="#docs" class="text-reset">Docs</a>
-      <a href="#" class="text-reset">Privacy</a>
-      <a href="#" class="text-reset">Terms</a>
-      <a href="#" class="text-reset">Contact</a>
+      <a routerLink="/about" class="text-reset">About</a>
+      <a routerLink="/docs" class="text-reset">Docs</a>
+      <a routerLink="/privacy" class="text-reset">Privacy</a>
+      <a routerLink="/terms" class="text-reset">Terms</a>
+      <a routerLink="/contact" class="text-reset">Contact</a>
     </div>
   </div>
 </footer>
