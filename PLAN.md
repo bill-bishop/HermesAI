@@ -5,6 +5,7 @@ This document summarizes the architecture, quirks, and next steps for the DropCo
 ## Monorepo Structure
 - **apps/dropcode-client**: Angular 20 frontend (standalone components, Bootstrap theme).
 - **apps/execution-sandbox**: Python Flask backend + Nginx for static/UI serving and API proxy.
+- **/.canvas**: Special directory for live testing standalone HTML/JS/CSS snippets.
 
 ### Frontend (dropcode-client)
 - **Angular 20** using standalone components.
@@ -17,9 +18,9 @@ This document summarizes the architecture, quirks, and next steps for the DropCo
   - `/login`, `/register` (public).
   - `/` → HomeComponent (requires auth).
   - `/features`, `/pricing` → placeholder pages (requires auth).
+  - `/canvas` → CanvasComponent (requires auth, shows live preview).
 - Tests:
   - Use `ng test` (Karma + Jasmine). Jest is **not supported** in Angular 20.
-  - Tests updated to match actual expectations (navbar + router-outlet).
 
 ### Backend (execution-sandbox)
 - **Flask + Flask-JWT-Extended**.
@@ -31,6 +32,9 @@ This document summarizes the architecture, quirks, and next steps for the DropCo
   - Tokens issued as `auth_token` cookies (HttpOnly, Secure, SameSite=Lax).
   - `/auth/me` returns current user from cookie.
   - `/auth/logout` clears cookie.
+- Routes:
+  - `/api/canvas` → serves `/.canvas/index.html` (if present).
+  - `/api/canvas/assets/*` → serves supporting static files from `/.canvas/assets/`.
 - Nginx:
   - Serves Angular app under `/`.
   - Proxies `/api/*` → Flask.
@@ -43,7 +47,7 @@ This document summarizes the architecture, quirks, and next steps for the DropCo
 
 ## Adding New Backend Routes
 1. Create a new file in `apps/execution-sandbox/sandbox_server/routes/`.
-2. Define a Flask Blueprint, register it in `app.py`.
+2. Define a Flask Blueprint, register it in `routes/__init__.py`.
 3. Update Nginx if you need `/api/...` paths exposed.
 
 ## Commit Process (Important for Agents)
@@ -52,6 +56,14 @@ When making changes, agents must commit in **two steps** so the CI daemon can de
 2. Commit the updated **submodule pointer** inside **`/sandbox`** (the monorepo root).
 
 This ensures the CI daemon sees both repos updated, pushes them upstream, and triggers a redeploy of the application.
+
+## Canvas Testing (New Feature)
+- The **Canvas** provides a live preview area for standalone HTML/JS/CSS apps or tests.
+- Agent workflow:
+  1. Write HTML/JS/CSS files to `/.canvas/index.html` (and optional assets under `/.canvas/assets/`).
+  2. Navigate to `https://dropcode.org/canvas` in the Angular UI.
+  3. The frontend will fetch `/api/canvas` and render it in an iframe.
+- This enables quick standalone prototyping without touching main Angular/Flask code.
 
 ## Next Steps
 - **Grace’s Tasks (Product/UX):**
