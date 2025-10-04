@@ -1,4 +1,3 @@
-## [Unreleased]\n\n### Added\n- WaitlistComponent and /waitlist route in Angular frontend\n- Flask /api/waitlist endpoint and PostgreSQL ORM integration\n- PostgreSQL container (apps/database) for persistent data\n\n### Changed\n- Updated sandbox_server Dockerfile to initialize Flask DB automatically\n- Synced monorepo PLAN.md and architecture for Waitlist MVP\n
 # Changelog
 
 ## [Unreleased]
