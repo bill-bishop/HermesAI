@@ -1,0 +1,23 @@
+<div class="container mt-5" style="max-width: 400px;">
+  <h2 class="text-center mb-3">Join the Waitlist</h2>
+
+  <form (ngSubmit)="joinWaitlist()" class="card p-4 shadow-sm bg-light">
+    <div class="form-group mb-3">
+      <label for="email" class="form-label">Email address</label>
+      <input
+        type="email"
+        id="email"
+        name="email"
+        class="form-control"
+        placeholder="you@example.com"
+        [(ngModel)]="email"
+        required
+      />
+    </div>
+
+    <button class="btn btn-primary w-100" type="submit">Join Waitlist</button>
+
+    <div *ngIf="message" class="alert alert-success mt-3">{{ message }}</div>
+    <div *ngIf="error" class="alert alert-danger mt-3">{{ error }}</div>
+  </form>
+</div>
