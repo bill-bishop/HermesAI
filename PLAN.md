@@ -5,6 +5,7 @@ This document summarizes the architecture, quirks, and next steps for the Hermes
 ## Monorepo Structure
 - **apps/dropcode-client**: Angular 20 frontend (standalone components, Bootstrap theme).
 - **apps/execution-sandbox**: Python Flask backend + Nginx for static/UI serving and API proxy.
+- **apps/database**: PostgreSQL container providing durable state storage.
 - **/.canvas**: Special directory for live testing standalone HTML/JS/CSS snippets.
 
 ### Frontend (dropcode-client)
@@ -24,7 +25,8 @@ This document summarizes the architecture, quirks, and next steps for the Hermes
 
 ### Backend (execution-sandbox)
 - **Flask + Flask-JWT-Extended**.
-- DB: SQLite (default).
+- **PostgreSQL** database managed in `apps/database`.
+- **Flask-SQLAlchemy** + **Flask-Migrate** for ORM and schema migrations.
 - SocketIO for workspace events.
 - Auth:
   - Local login/register endpoints.
@@ -35,185 +37,155 @@ This document summarizes the architecture, quirks, and next steps for the Hermes
 - Routes:
   - `/api/canvas` → serves `/.canvas/index.html` (if present).
   - `/api/canvas/assets/*` → serves supporting static files from `/.canvas/assets/`.
+  - `/api/waitlist` → manages early-access signups.
 - Nginx:
   - Serves Angular app under `/`.
   - Proxies `/api/*` → Flask.
   - Config includes `try_files $uri /index.html;` to support Angular 20 path routing.
 
-## Angular 20 Quirks
-- `jest` does not integrate cleanly. Use `ng test` instead.
-- For routing, do **not** use `withHashLocation()`. Default HTML5 routing is supported, but requires nginx fallback.
-- Guards must handle async properly (tri-state `undefined | null | User`).
+---
 
-## Adding New Backend Routes
-1. Create a new file in `apps/execution-sandbox/sandbox_server/routes/`.
-2. Define a Flask Blueprint, register it in `routes/__init__.py`.
-3. Update Nginx if you need `/api/...` paths exposed.
+## Database Architecture (PostgreSQL)
 
-## Commit Process (Important for Agents)
-When making changes, agents must commit in **two steps** so the CI daemon can detect, push, and redeploy:
-1. Commit changes inside **`/sandbox/apps/execution-sandbox`** (the submodule).
-2. Commit the updated **submodule pointer** inside **`/sandbox`** (the monorepo root).
+### Overview
+A dedicated **PostgreSQL database container** lives under `apps/database`, serving as the main persistence layer for authentication, user workspaces, and the waitlist MVP. This modular architecture allows scaling and durability when transitioning to Kubernetes.
 
-This ensures the CI daemon sees both repos updated, pushes them upstream, and triggers a redeploy of the application.
+### Directory Structure
+```
+apps/database/
+├── Dockerfile
+└── init.sql (optional, bootstrap schema)
+```
 
-## Canvas Testing (New Feature)
-- The **Canvas** provides a live preview area for standalone HTML/JS/CSS apps or tests.
-- Agent workflow:
-  1. Write HTML/JS/CSS files to `/.canvas/index.html` (and optional assets under `/.canvas/assets/`).
-  2. Navigate to `https://hermesai.dev/canvas` in the Angular UI.
-  3. The frontend will fetch `/api/canvas` and render it in an iframe.
-- This enables quick standalone prototyping without touching main Angular/Flask code.
+### Dockerfile (apps/database/Dockerfile)
+```dockerfile
+FROM postgres:15-alpine
+ENV POSTGRES_USER=postgres \
+    POSTGRES_PASSWORD=postgres \
+    POSTGRES_DB=dropcode
+EXPOSE 5432
+VOLUME ["/var/lib/postgresql/data"]
+COPY init.sql /docker-entrypoint-initdb.d/
+```
 
-## Next Steps
-- **Grace’s Tasks (Product/UX):**
-  - Draft new homepage copy.
-  - **[CURRENT TASK] Create homepage wireframe.**
-  - Draft new feature page copy.
-  - Create feature page wireframe.
-  - Draft new pricing page copy.
-  - Create pricing page wireframe.
-  - Investigate Socket.IO disconnect / cannot send message errors (frontend error handling & UX impact).
+### Flask ORM Integration
 
-- **Bill’s Tasks (Architecture/Backend/Engineering):**
-  - Flesh out Home/Features/Pricing components with real app content.
-  - Add tests for `HomeComponent`, `FeaturesComponent`, and `PricingComponent`.
-  - Complete in-house auth (local user login/register backend logic).
-  - Extend ThirdPartyAuthComponent with Google & Facebook providers.
-  - Add refresh token support (currently only access tokens).
-  - refactor dropcode-client to be hermesai-client
-  - Harden Nginx config (CSP headers, rate limiting, etc.).
-  - CI/CD pipeline for building Angular + deploying Flask/Nginx container.
-  - Build **User** and **Workspace** tables in the backend DB.
-  - Add Kubernetes config + healthcheck endpoints for container orchestration and monitoring.
-  - **[CURRENT TASK] Integrate user authentication with workspace selection:**
-    - Add `workspace_id` to JWT tokens.
-    - Ensure `/auth/me` includes the selected workspace.
-    - Update **Nginx ↔ Flask handoff** so that Nginx routes requests to a container URL based on `workspace_id`.
-    - Implement deterministic container routing:
-      - Currently all users share one global sandbox (`http://sandbox:8080`).
-      - Spin up **one container per test user** with a deterministic internal URL.
-      - Update Nginx upstreams or reverse proxy logic to map `workspace_id → container URL`.
-  - **Add Git Hook for Server Reload:**
-    - Implement a post-receive (or CI/CD hook) that automatically reloads the Flask + Nginx server when new commits are pushed.
-    - Ensure safe zero-downtime reload (e.g., `nginx -s reload` and Flask/Gunicorn reload).
-    - Security: whitelist repo origin, ensure only trusted pushes trigger reload.
+Dependencies (in `apps/execution-sandbox/requirements.txt`):
+```
+flask-sqlalchemy
+flask-migrate
+psycopg2-binary
+```
+
+#### Configuration (`apps/execution-sandbox/sandbox_server/__init__.py`)
+```python
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+import os
+
+db = SQLAlchemy()
+migrate = Migrate()
+
+def create_app():
+    app = Flask(__name__)
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
+        'DATABASE_URL',
+        'postgresql+psycopg2://postgres:postgres@db:5432/dropcode'
+    )
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+    db.init_app(app)
+    migrate.init_app(app, db)
+
+    from .routes import register_routes
+    register_routes(app)
+
+    return app
+```
+
+#### Models (`apps/execution-sandbox/sandbox_server/models.py`)
+```python
+from datetime import datetime
+from . import db
+
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    workspaces = db.relationship('Workspace', backref='user', lazy=True)
+
+class Workspace(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    container_url = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Waitlist(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    source = db.Column(db.String(100))
+    notes = db.Column(db.Text)
+```
+
+#### Waitlist Route (`apps/execution-sandbox/sandbox_server/routes/waitlist.py`)
+```python
+from flask import Blueprint, request, jsonify
+from datetime import datetime
+from ..models import db, Waitlist
+
+bp = Blueprint('waitlist', __name__, url_prefix='/api')
+
+@bp.route('/waitlist', methods=['POST'])
+def join_waitlist():
+    data = request.get_json()
+    email = data.get('email')
+    if not email:
+        return jsonify({'error': 'Email required'}), 400
+
+    existing = Waitlist.query.filter_by(email=email).first()
+    if existing:
+        return jsonify({'message': "You're already on the list!"}), 409
+
+    entry = Waitlist(email=email, created_at=datetime.utcnow())
+    db.session.add(entry)
+    db.session.commit()
+
+    return jsonify({'message': 'Welcome to the waitlist!'}), 201
+```
+
+#### Routes Registration (`apps/execution-sandbox/sandbox_server/routes/__init__.py`)
+```python
+def register_routes(app):
+    from .waitlist import bp as waitlist_bp
+    app.register_blueprint(waitlist_bp)
+```
 
 ---
 
-## MVP Spec: User Authentication + Workspace Integration
-
-For the MVP, container lifecycle will be **manual** (admin spins up per-user containers). Our goal is to wire up the backend + Nginx so that each authenticated user is bound to their own container.
-
-### 1. Database Changes
-- Extend **User** table:
-  - `id`: int, primary key.
-  - `email`, `password_hash`, etc.
-- New **Workspace** table:
-  - `id`: int, primary key.
-  - `user_id`: FK → User.id.
-  - `container_url`: string (e.g., `http://sandbox-user1:8080`).
-  - `created_at`, `updated_at`.
-
-### 2. Authentication Flow Changes
-- On login/register:
-  - Fetch or create a `Workspace` for the user.
-  - Include `workspace_id` in the JWT payload.
-  - Issue cookie with both `sub` (user_id) and `workspace_id`.
-- `/auth/me`:
-  - Return `{ user, workspace }` where workspace includes container_url.
-
-### 3. Backend Changes (Flask)
-- Add `Workspace` model in `models.py`.
-- Modify `auth.py` and registration flow to auto-create a workspace row.
-- Update JWT generation:
-  ```python
-  additional_claims = { "workspace_id": workspace.id }
-  access_token = create_access_token(identity=user.id, additional_claims=additional_claims)
-  ```
-- Update `/auth/me` to return:
-  ```json
-  {
-    "id": 123,
-    "email": "user@example.com",
-    "workspace": {
-      "id": 456,
-      "container_url": "http://sandbox-user1:8080"
-    }
-  }
-  ```
-
-### 4. Nginx Changes
-- Define upstream blocks for each manually spun-up container:
-  ```nginx
-  upstream workspace_456 {
-    server sandbox-user1:8080;
-  }
-  ```
-- Use a **Lua script** or **nginx map** to select upstream based on JWT `workspace_id` claim:
-  - MVP: Hardcode mapping in nginx.conf.
-  - Later: dynamic lookup (e.g., Redis or shared dict).
-- Proxy requests to the correct container:
-  ```nginx
-  location /api/execute/ {
-    proxy_pass http://workspace_456;
-  }
-  ```
-
-### 5. Frontend Changes (Angular)
-- Update `AuthService`:
-  - Store both `user` and `workspace` in `currentUser$`.
-- Expose `workspace.container_url` so the UI can route API calls accordingly.
-- Ensure guards wait for workspace info before loading Home/Features/Pricing.
-
-### 6. Manual Container Management (for MVP)
-- Admin spins up containers manually, named predictably (e.g., `sandbox-user1`).
-- Insert `container_url` into DB for each workspace.
-- Nginx config updated manually with corresponding upstream.
-
-### 7. Future Extensions (post-MVP)
-- Automate container lifecycle (spin up/down on demand).
-- Dynamic Nginx upstreams via Lua + Redis.
-- Support multiple workspaces per user.
+### Migration Commands
+Run inside the Flask container:
+```bash
+flask db init
+flask db migrate -m "initial schema"
+flask db upgrade
+```
 
 ---
 
-## Waitlist Feature (New)
-
-### Goal
-Enable early-access registration and interest tracking for upcoming DropCode features before full signup is available.
-
-### Requirements
-- **Frontend (Angular 20):**
-  - Add `/waitlist` route.
-  - Create `WaitlistComponent` with a simple email input form and submit button.
-  - Connect form to `/api/waitlist` endpoint.
-  - Display success and error messages using Bootstrap alerts.
-
-- **Backend (Flask):**
-  - Add `/api/waitlist` POST route.
-  - Accept `{ "email": "user@example.com" }` JSON payload.
-  - Validate email, insert into `Waitlist` table.
-  - Prevent duplicate entries.
-
-- **Database:**
-  - New table `Waitlist`:
-    - `id`: integer primary key
-    - `email`: string (unique)
-    - `created_at`: datetime
-  - Optional: Add `source` and `notes` fields for analytics.
-
-- **Admin Tools (Future Extension):**
-  - Add `/admin/waitlist` route to view/export signups.
-  - CSV export for marketing tools.
-
-- **Nginx:**
-  - No changes required (proxied through existing `/api` path).
-
-### MVP Criteria
-- Form successfully stores new emails in the database.
-- User receives a success message.
-- Duplicates return a friendly “You’re already on the list” message.
+### Kubernetes-Ready Design
+- PostgreSQL runs as a **StatefulSet** with persistent storage.
+- Flask connects via Service DNS: `postgresql+psycopg2://postgres:postgres@postgres-svc:5432/dropcode`.
+- Horizontal scaling affects only Flask replicas, not the DB.
 
 ---
-This PLAN.md serves as context for future dev cycles and as a quick bootstrapping guide for new engineers or AI copilots.
+
+### Summary
+This integration provides:
+- Durable PostgreSQL database container.
+- Idiomatic Flask ORM with SQLAlchemy + Alembic migrations.
+- Extensible schema for users, workspaces, and waitlist entries.
+- Clean upgrade path to Kubernetes with persistent storage and service-based networking.
