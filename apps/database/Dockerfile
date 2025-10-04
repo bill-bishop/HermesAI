@@ -1,0 +1,4 @@
+FROM postgres:15
+ENV POSTGRES_DB=waitlistdb
+ENV POSTGRES_USER=waitlist_user
+ENV POSTGRES_PASSWORD=secret
