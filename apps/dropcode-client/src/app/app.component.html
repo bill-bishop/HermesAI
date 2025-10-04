@@ -18,7 +18,8 @@
     </button>
     <div class="collapse navbar-collapse" id="navbarNav">
       <ul class="navbar-nav ms-auto mb-2 mb-lg-0 align-items-lg-center">
-<!--        <li class="nav-item"><a class="nav-link" routerLink="/features">Features</a></li>-->
+        <li class="nav-item" *ngIf="isBetaAccessEnabled"><a class="nav-link" href="/terminal.html" target="_blank">Terminal</a></li>
+        <li class="nav-item" *ngIf="isBetaAccessEnabled"><a class="nav-link" href="https://chatgpt.com/g/g-67659602f22c81919da3c6b22b96658c-hermesai-preview" target="_blank">HermesGPT</a></li>
 <!--        <li class="nav-item"><a class="nav-link" routerLink="/pricing">Pricing</a></li>-->
 <!--        <li class="nav-item"><a class="nav-link" routerLink="/docs">Docs</a></li>-->
 <!--        <li class="nav-item"><a class="nav-link" routerLink="/login">Login</a></li>-->

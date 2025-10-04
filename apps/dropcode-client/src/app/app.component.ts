@@ -1,7 +1,8 @@
 import { Component } from '@angular/core';
 import {RouterLink, RouterLinkActive, RouterOutlet} from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { AuthService } from './auth/auth.service';
+import {AuthService, User} from './auth/auth.service';
+import {filter, map} from 'rxjs/operators';
 
 @Component({
   selector: 'app-root',
@@ -11,5 +12,17 @@ import { AuthService } from './auth/auth.service';
   styleUrls: ['./app.scss']
 })
 export class AppComponent {
-  constructor(public auth: AuthService) {}
+  isBetaAccessEnabled: boolean = false;
+
+  constructor(public auth: AuthService) {
+    auth.currentUser$.pipe(
+      filter(user => user !== undefined && user !== null),
+      map(user => {
+        this.isBetaAccessEnabled = this.isBetaAccessUser(user);
+      }));
+  }
+
+  isBetaAccessUser(user: User): boolean {
+    return user.email === 'bill-bishop@users.noreply.github.com' ||  user.email !== 'Krigerprinsesse@users.noreply.github.com';
+  }
 }
