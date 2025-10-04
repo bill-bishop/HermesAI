@@ -1,0 +1,23 @@
+<div class="waitlist-container">
+  <h1>Join the Waitlist</h1>
+  <p>Be among the first to access DropCode's next-generation tools.</p>
+
+  <form (submit)="joinWaitlist(); $event.preventDefault();" class="waitlist-form">
+    <input
+      type="email"
+      placeholder="Enter your email"
+      [(ngModel)]="email"
+      name="email"
+      required
+    />
+
+    <button type="submit" [disabled]="loading">
+      {{ loading ? 'Submitting...' : 'Join Waitlist' }}
+    </button>
+  </form>
+
+  <!-- Toast Notification -->
+  <div class="toast" *ngIf="showToast" [ngClass]="toastType">
+    <span>{{ message }}</span>
+  </div>
+</div>

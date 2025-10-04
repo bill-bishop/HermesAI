@@ -1,0 +1,78 @@
+.waitlist-container {
+  max-width: 400px;
+  margin: 5rem auto;
+  text-align: center;
+  background: #ffffff;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+
+  h1 {
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+  }
+
+  p {
+    margin-bottom: 1rem;
+    color: #555;
+  }
+
+  .waitlist-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+
+    input {
+      padding: 0.75rem;
+      font-size: 1rem;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      padding: 0.75rem;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.3s;
+
+      &:hover {
+        background: #0056b3;
+      }
+
+      &:disabled {
+        background: #aaa;
+        cursor: not-allowed;
+      }
+    }
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    padding: 1rem 1.5rem;
+    border-radius: 6px;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    animation: fadeInOut 4s ease forwards;
+
+    &.success {
+      background-color: #28a745;
+      color: white;
+    }
+
+    &.error {
+      background-color: #dc3545;
+      color: white;
+    }
+  }
+
+  @keyframes fadeInOut {
+    0% { opacity: 0; transform: translateY(20px); }
+    10%, 90% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(20px); }
+  }
+}
