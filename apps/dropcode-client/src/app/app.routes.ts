@@ -23,7 +23,7 @@ export const authGuard: CanActivateFn = () => {
 };
 
 export const routes: Routes = [
-  { path: '', component: HomeComponent, canActivate: [authGuard], pathMatch: 'full' },
+  { path: '', component: HomeComponent, canActivate: [], pathMatch: 'full' },
   { path: 'features', component: FeaturesComponent, canActivate: [authGuard] },
   { path: 'pricing', component: PricingComponent, canActivate: [authGuard] },
   { path: 'canvas', component: CanvasComponent, canActivate: [authGuard] },

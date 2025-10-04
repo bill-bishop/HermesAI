@@ -1,0 +1,33 @@
+
+.rainbow-text {
+  background: linear-gradient(to right, #d90d73, /* magenta */ #6a36db, /* purple */ #12b5c9, /* cyan */ #e86c0c, /* orange */ /*#f7e727, yellow */ /*#d90d73, magenta (repeat cycle) */ #6a36db, /* purple */ #12b5c9, /* cyan */ #e86c0c, /* orange */ #f7e727 /* yellow */);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+  font-family: math;
+  font-size: 1.8em;
+  margin: 0 0 -10px 1px;
+}
+
+.btn-gradient {
+  background: linear-gradient(to right, #d946ef, #6366f1, #06b6d4);
+  color: #0b0b12;
+  border: none;
+  box-shadow: 0 8px 40px rgba(139, 92, 246, 0.35);
+}
+
+.btn-gradient:hover {
+  filter: brightness(1.1);
+}
+
+.gradient-text {
+  background: linear-gradient(to top right, #d946ef, #06b6d4, #fbbf24);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.navbar-brand {
+  margin-left: 1em;
+}
