@@ -177,4 +177,43 @@ For the MVP, container lifecycle will be **manual** (admin spins up per-user con
 - Support multiple workspaces per user.
 
 ---
+
+## Waitlist Feature (New)
+
+### Goal
+Enable early-access registration and interest tracking for upcoming DropCode features before full signup is available.
+
+### Requirements
+- **Frontend (Angular 20):**
+  - Add `/waitlist` route.
+  - Create `WaitlistComponent` with a simple email input form and submit button.
+  - Connect form to `/api/waitlist` endpoint.
+  - Display success and error messages using Bootstrap alerts.
+
+- **Backend (Flask):**
+  - Add `/api/waitlist` POST route.
+  - Accept `{ "email": "user@example.com" }` JSON payload.
+  - Validate email, insert into `Waitlist` table.
+  - Prevent duplicate entries.
+
+- **Database:**
+  - New table `Waitlist`:
+    - `id`: integer primary key
+    - `email`: string (unique)
+    - `created_at`: datetime
+  - Optional: Add `source` and `notes` fields for analytics.
+
+- **Admin Tools (Future Extension):**
+  - Add `/admin/waitlist` route to view/export signups.
+  - CSV export for marketing tools.
+
+- **Nginx:**
+  - No changes required (proxied through existing `/api` path).
+
+### MVP Criteria
+- Form successfully stores new emails in the database.
+- User receives a success message.
+- Duplicates return a friendly “You’re already on the list” message.
+
+---
 This PLAN.md serves as context for future dev cycles and as a quick bootstrapping guide for new engineers or AI copilots.
