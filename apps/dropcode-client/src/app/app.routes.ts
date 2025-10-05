@@ -30,6 +30,6 @@ export const routes: Routes = [
   { path: 'canvas', component: CanvasComponent, canActivate: [authGuard] },
   { path: 'login', component: LoginComponent },
   { path: 'register', component: RegisterComponent },
-  { path: 'waiting-list', component: WaitlistComponent },
+  { path: 'early-access', component: WaitlistComponent },
   { path: '**', redirectTo: '', pathMatch: 'full' },
 ];
