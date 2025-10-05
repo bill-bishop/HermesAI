@@ -6,7 +6,7 @@
       <span class="dot bg-warning"></span>
       <span class="dot bg-success"></span>
     </div>
-    <div class="url-bar" role="textbox" aria-label="Address bar">https://dropcode.org/agent</div>
+    <div class="url-bar" role="textbox" aria-label="Address bar">https://hermesai.dev</div>
     <div class="chrome-actions" aria-hidden="true">
       <span class="pill"></span>
     </div>
@@ -30,36 +30,39 @@
     <div class="msg agent">
       <div class="avatar">A</div>
       <div class="bubble">
-        <div class="meta">Agent • typing…</div>
-        <div class="text">Got it — scaffolding project, wiring services, and generating CI.</div>
+        <div class="meta">HermesAI • planning…</div>
+        <div class="text">Scaffolding services, wiring CI, and provisioning database volumes.</div>
       </div>
     </div>
 
     <!-- TERMINAL WIDGET (embedded) -->
     <div class="terminal-section">
-      <div class="terminal-window shadow-lg rounded-3 p-3">
-        <!-- NOTE: the "close/minimize" dots are intentionally omitted here -->
-        <small class="text-white-50 d-block mb-2">/org/acme • build & provision log</small>
-        <pre class="terminal-output text-white-90">
-$ hermes run "fullstack bootstrap"
-[init] creating workspace acme-fullstack
-[git]  git init && git remote add origin https://github.com/acme/fullstack
-[node] ng new web --standalone --style=scss --routing
-[py  ] flask new api && poetry add flask psycopg2-binary gunicorn
-[db  ] docker volume create acme_pgdata
-[compose] writing docker-compose.yml
+      <div class="terminal-window rounded-3 p-3">
+        <!-- No inner traffic-light dots by design -->
+        <small class="terminal-caption">/org/acme • agentic terminal stream</small>
 
-$ tree -L 2
+        <pre class="terminal-output">
+<span class="token-prompt">$</span> <span class="token-cmd">cd</span> <span class="token-path">/workspace/acme-fullstack</span>
+<span class="muted"># switching to working directory</span>
+
+<span class="token-prompt">$</span> <span class="token-cmd">tree</span> <span class="token-arg">-L 1</span>
 .
-├─ apps/
-│  ├─ web/                # Angular 20 client
-│  └─ api/                # Flask API
-├─ infra/
-│  ├─ db/                 # Postgres init scripts
-│  └─ nginx/              # optional edge proxy
-└─ docker-compose.yml
+├─ apps
+├─ infra
+└─ README.md
 
-$ cat docker-compose.yml
+<span class="badge fs">[fs]</span> <span class="token-fs">created</span> <span class="token-path">/sandbox/docker-compose.yml</span>
+<span class="badge fs">[fs]</span> <span class="token-fs">created</span> <span class="token-path">/sandbox/apps/web/</span>
+<span class="badge fs">[fs]</span> <span class="token-fs">created</span> <span class="token-path">/sandbox/apps/api/</span>
+<span class="badge fs">[fs]</span> <span class="token-fs">wrote</span>   <span class="token-path">/sandbox/infra/db/init/001_init.sql</span> <span class="muted">(436 B)</span>
+
+<span class="token-prompt">$</span> <span class="token-cmd">ng</span> <span class="token-arg">new</span> <span class="token-path">apps/web</span> <span class="token-arg">--standalone --style=scss --routing</span>
+<span class="badge exec">[exec]</span> <span class="token-exec">Angular project created</span> <span class="muted">(standalone, SCSS, routing)</span>
+
+<span class="token-prompt">$</span> <span class="token-cmd">poetry</span> <span class="token-arg">new</span> <span class="token-path">apps/api</span> && <span class="token-cmd">poetry</span> <span class="token-arg">add</span> flask gunicorn psycopg2-binary
+<span class="badge exec">[exec]</span> <span class="token-exec">Flask API scaffolded</span> <span class="muted">(gunicorn, psycopg)</span>
+
+<span class="token-prompt">$</span> <span class="token-cmd">cat</span> <span class="token-path">/sandbox/docker-compose.yml</span>
 services:
   web:
     build: ./apps/web
@@ -68,7 +71,7 @@ services:
   api:
     build: ./apps/api
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/postgres
+      - DATABASE_URL=postgresql://postgres:postgres&#64;db:5432/postgres
     ports: [ "8080:8080" ]
     depends_on: [ db ]
   db:
@@ -80,9 +83,18 @@ services:
 volumes:
   acme_pgdata: {{ '{}' }}
 
-$ hermes ci enable --provider=github --workflow=fullstack
-[actions] opened PR #128 • added CI pipeline
-$            </pre>
+<span class="token-prompt">$</span> <span class="token-cmd">pnpm</span> <span class="token-arg">i</span> <span class="muted"># web deps</span>
+<span class="badge exec">[exec]</span> <span class="token-exec">installed</span> <span class="muted">132 packages</span>
+
+<span class="token-prompt">$</span> <span class="token-cmd">pytest</span> <span class="token-arg">-q</span> <span class="muted"># API tests</span>
+<span class="badge ok">[ok]</span> <span class="token-ok">37 tests passed</span> <span class="muted">in 18.2s</span>
+
+<span class="token-prompt">$</span> <span class="token-cmd">git</span> <span class="token-arg">commit -am</span> <span class="token-str">"feat: bootstrap web/api, compose, db volume"</span>
+<span class="badge exec">[exec]</span> <span class="token-exec">commit</span> <span class="muted">abc1234</span>
+
+<span class="token-prompt">$</span> <span class="token-cmd">gh</span> <span class="token-arg">pr create</span> <span class="token-arg">--fill</span>
+<span class="badge ok">[ok]</span> <span class="token-ok">opened PR #128</span> <span class="muted">• CI workflow attached</span>
+        </pre>
       </div>
     </div>
 
@@ -90,13 +102,13 @@ $            </pre>
     <div class="msg agent">
       <div class="avatar">A</div>
       <div class="bubble">
-        <div class="meta">Agent • just now</div>
+        <div class="meta">HermesAI • just now</div>
         <div class="text d-flex align-items-center gap-2">
           <span>Done!</span>
           <span class="check" aria-label="success">✓</span>
           <a class="btn btn-primary btn-sm ms-auto" routerLink="/early-access">Preview</a>
         </div>
-        <div class="hint">Use <code>docker compose up --build</code> to spin up web, api, and db.</div>
+        <div class="hint">Run <code>docker compose up --build</code> to start <code>web</code>, <code>api</code>, and <code>db</code>.</div>
       </div>
     </div>
   </div>
