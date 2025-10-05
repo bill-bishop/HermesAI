@@ -1,0 +1,19 @@
+# Node dependencies
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Build artifacts
+dist
+tmp
+coverage
+.angular
+.cache
+
+# OS + editor files
+.DS_Store
+Thumbs.db
+.vscode
+.idea
+*.swp
+*.swo

@@ -1,0 +1,94 @@
+version: '3.9'
+
+services:
+  database:
+    build: ./apps/database
+    container_name: hermesai-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: hermesaidb
+      POSTGRES_USER: hermesai_user
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./apps/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - hermesnet
+
+  backend:
+    build: ./apps/execution-sandbox/sandbox_server
+    container_name: hermesai-backend
+    depends_on:
+      - database
+    environment:
+      DATABASE_URL: postgres://hermesai_user:secret@database:5432/hermesaidb
+      PYTHONUNBUFFERED: 1
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./apps/execution-sandbox:/app
+    networks:
+      - hermesnet
+    command: ["python", "-m", "sandbox_server.app"]
+
+  frontend:
+    build: ./apps/dropcode-client
+    container_name: hermesai-frontend
+    depends_on:
+      - backend
+    environment:
+      - NODE_ENV=production
+    command: ["nginx", "-g", "daemon off;"]
+    volumes:
+      - ./apps/dropcode-client:/usr/src/app
+      - frontend_build:/usr/src/app/dist
+    networks:
+      - hermesnet
+
+  router:
+    build: ./apps/execution-sandbox/terminal
+    container_name: hermesai-router
+    depends_on:
+      - frontend
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./apps/execution-sandbox/terminal/nginx.conf:/etc/nginx/nginx.conf:ro
+      - frontend_build:/usr/share/nginx/html:ro
+    networks:
+      - hermesnet
+    environment:
+      - ROUTER_MODE=production
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/api/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: always
+
+  tunnel:
+    build: ./apps/tunnel
+    container_name: hermesai-tunnel
+    depends_on:
+      router:
+        condition: service_healthy
+    volumes:
+      - type: bind
+        source: C:\\Users\\willh\\.cloudflared
+        target: /etc/cloudflared
+        bind:
+          create_host_path: true
+    networks:
+      - hermesnet
+    restart: unless-stopped
+
+volumes:
+  db_data:
+  frontend_build:
+
+networks:
+  hermesnet:
+    driver: bridge

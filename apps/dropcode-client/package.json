@@ -5,7 +5,6 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
-    "postbuild": "cp -r ./dist/dropcode-client/browser/* ../execution-sandbox/terminal/html/",
     "watch": "ng build --watch --configuration development",
     "test": "ng test --watch=False --browsers=ChromeHeadlessNoSandbox"
   },
