@@ -1,11 +1,12 @@
 import { Component, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule, NavigationEnd, UrlTree } from '@angular/router';
+import {AgentPreview} from '../agent-preview/agent-preview';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, AgentPreview],
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.scss']
 })

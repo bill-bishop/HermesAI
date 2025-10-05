@@ -1,0 +1,103 @@
+<!-- Browser Window Shell -->
+<section class="browser-window">
+  <div class="window-chrome">
+    <div class="chrome-dots" aria-hidden="true">
+      <span class="dot bg-danger"></span>
+      <span class="dot bg-warning"></span>
+      <span class="dot bg-success"></span>
+    </div>
+    <div class="url-bar" role="textbox" aria-label="Address bar">https://dropcode.org/agent</div>
+    <div class="chrome-actions" aria-hidden="true">
+      <span class="pill"></span>
+    </div>
+  </div>
+
+  <!-- Chat Thread -->
+  <div class="chat">
+    <!-- USER -->
+    <div class="msg user">
+      <div class="avatar">U</div>
+      <div class="bubble">
+        <div class="meta">You • now</div>
+        <div class="text">
+          Make me a full-stack <strong>Angular 20</strong> + <strong>FlaskAPI</strong> + <strong>PostgreSQL</strong>
+          application and give me a <strong>docker compose</strong> entrypoint to spin everything up.
+        </div>
+      </div>
+    </div>
+
+    <!-- AGENT (intro) -->
+    <div class="msg agent">
+      <div class="avatar">A</div>
+      <div class="bubble">
+        <div class="meta">Agent • typing…</div>
+        <div class="text">Got it — scaffolding project, wiring services, and generating CI.</div>
+      </div>
+    </div>
+
+    <!-- TERMINAL WIDGET (embedded) -->
+    <div class="terminal-section">
+      <div class="terminal-window shadow-lg rounded-3 p-3">
+        <!-- NOTE: the "close/minimize" dots are intentionally omitted here -->
+        <small class="text-white-50 d-block mb-2">/org/acme • build & provision log</small>
+        <pre class="terminal-output text-white-90">
+$ hermes run "fullstack bootstrap"
+[init] creating workspace acme-fullstack
+[git]  git init && git remote add origin https://github.com/acme/fullstack
+[node] ng new web --standalone --style=scss --routing
+[py  ] flask new api && poetry add flask psycopg2-binary gunicorn
+[db  ] docker volume create acme_pgdata
+[compose] writing docker-compose.yml
+
+$ tree -L 2
+.
+├─ apps/
+│  ├─ web/                # Angular 20 client
+│  └─ api/                # Flask API
+├─ infra/
+│  ├─ db/                 # Postgres init scripts
+│  └─ nginx/              # optional edge proxy
+└─ docker-compose.yml
+
+$ cat docker-compose.yml
+services:
+  web:
+    build: ./apps/web
+    ports: [ "4200:4200" ]
+    depends_on: [ api ]
+  api:
+    build: ./apps/api
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/postgres
+    ports: [ "8080:8080" ]
+    depends_on: [ db ]
+  db:
+    image: postgres:16
+    environment:
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - acme_pgdata:/var/lib/postgresql/data
+volumes:
+  acme_pgdata: {{ '{}' }}
+
+$ hermes ci enable --provider=github --workflow=fullstack
+[actions] opened PR #128 • added CI pipeline
+$            </pre>
+      </div>
+    </div>
+
+    <!-- AGENT (result + actions) -->
+    <div class="msg agent">
+      <div class="avatar">A</div>
+      <div class="bubble">
+        <div class="meta">Agent • just now</div>
+        <div class="text d-flex align-items-center gap-2">
+          <span>Done!</span>
+          <span class="check" aria-label="success">✓</span>
+          <a class="btn btn-primary btn-sm ms-auto" routerLink="/early-access">Preview</a>
+        </div>
+        <div class="hint">Use <code>docker compose up --build</code> to spin up web, api, and db.</div>
+      </div>
+    </div>
+  </div>
+</section>

@@ -20,27 +20,7 @@
 </section>
 
 <!-- TERMINAL MOCK -->
-<section class="terminal-section">
-  <div class="container">
-    <div class="terminal-window shadow-lg rounded-3 p-3">
-      <div class="d-flex align-items-center mb-2">
-        <span class="dot bg-danger me-1"></span>
-        <span class="dot bg-warning me-1"></span>
-        <span class="dot bg-success me-2"></span>
-        <small class="text-white-50">/org/acme • live agent stream</small>
-      </div>
-      <pre class="terminal-output text-white-90">
-$ hermes run "setup repo + create CI"
-[worker] git clone https://github.com/acme/api
-[worker] pnpm i && pnpm test
-[overseer] policy ✓ sandbox ✓ provenance ✓
-[stream] 37 tests passed in 18.2s
-[actions] opened PR #128 • added CI pipeline
-$
-      </pre>
-    </div>
-  </div>
-</section>
+<app-agent-preview />
 
 <!-- PROBLEM → SOLUTION -->
 <section class="py-5 bg-dark text-white border-top border-light-subtle">
