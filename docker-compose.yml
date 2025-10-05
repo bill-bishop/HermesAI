@@ -4,8 +4,8 @@ services:
   database:
     build: ./apps/database
     container_name: hermesai-db
-    ports:
-      - "5432:5432"
+    expose:
+      - "5432"
     environment:
       POSTGRES_DB: hermesaidb
       POSTGRES_USER: hermesai_user

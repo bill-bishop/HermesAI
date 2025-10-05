@@ -1,6 +1,6 @@
 .waitlist-container {
   max-width: 400px;
-  margin: 5rem auto;
+  margin: 15rem auto;
   text-align: center;
   background: #ffffff;
   padding: 2rem;
@@ -58,6 +58,7 @@
     font-weight: 500;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     animation: fadeInOut 4s ease forwards;
+    margin-bottom:5em;
 
     &.success {
       background-color: #28a745;
@@ -76,3 +77,4 @@
     100% { opacity: 0; transform: translateY(20px); }
   }
 }
+
