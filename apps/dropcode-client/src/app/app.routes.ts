@@ -8,6 +8,7 @@ import { FeaturesComponent } from './features/features.component';
 import { PricingComponent } from './pricing/pricing.component';
 import { filter, map } from 'rxjs/operators';
 import { CanvasComponent } from './canvas.component';
+import {WaitlistComponent} from './waitlist/waitlist.component';
 
 export const authGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
@@ -29,5 +30,6 @@ export const routes: Routes = [
   { path: 'canvas', component: CanvasComponent, canActivate: [authGuard] },
   { path: 'login', component: LoginComponent },
   { path: 'register', component: RegisterComponent },
+  { path: 'waiting-list', component: WaitlistComponent },
   { path: '**', redirectTo: '', pathMatch: 'full' },
 ];
