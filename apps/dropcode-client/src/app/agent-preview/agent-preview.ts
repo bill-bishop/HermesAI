@@ -116,12 +116,12 @@ If this sounds good, I'll implement this architecture in the live sandbox for yo
     this.chatAnimation.done$.subscribe(() => {
       this.agentPreviewChat.nativeElement.scrollTo({ top: this.agentPreviewChat.nativeElement.scrollHeight, behavior: 'smooth' });
       chatFrame += 1;
-      if (chatFrame === this.queue.length) {
+
+      const currentFrame: QueueItem = this.queue[chatFrame];
+      if (!currentFrame) {
         clearInterval(scrollLoop);
         return;
       }
-
-      const currentFrame: QueueItem = this.queue[chatFrame];
       this.model.push(currentFrame);
 
       if (currentFrame.type === 'terminal') {
