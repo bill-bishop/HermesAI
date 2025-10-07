@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * markityper unified stream (v0.1.1)
+ * markityper unified stream (v0.1.2)
  * Emits a stream of:
  *   - { type: "syntax", kind: "line" | "open" | "close", value }
- *   - { type: "display", value }   // one grapheme
+ *   - { type: "display", value }   // graphemes or clumped whitespace
  *
  * NOTE: No synthetic closers are ever emitted. Output is a verbatim
  * decomposition of the input, so concatenating all `value`s === original text.
@@ -19,6 +19,41 @@ function* graphemes(str) {
         for (const ch of str) yield ch; // fallback
     }
 }
+
+const isWS = (c) => c === ' ' || c === '\t' || c === '\n' || c === '\r';
+function readWS(src, i) {
+    let j = i;
+    while (j < src.length && isWS(src[j])) j++;
+    return j - i; // length of whitespace run
+}
+
+/**
+ * Convert an HTML opening tag into its corresponding closing tag.
+ * Drops attributes, handles stray whitespace, and ignores already-closed tags.
+ *
+ * Examples:
+ *   toClosingTag('<div class="plan">')  -> '</div>'
+ *   toClosingTag('<ul>')                -> '</ul>'
+ *   toClosingTag('<br/>')               -> ''   (self-closing tag)
+ *   toClosingTag('</div>')              -> '</div>' (unchanged)
+ */
+export function toClosingTag(opening) {
+    if (typeof opening !== 'string') return '';
+
+    const s = opening.trim();
+
+    // ignore empty or self-closing tags
+    if (!s.startsWith('<') || !s.endsWith('>')) return '';
+    if (s.startsWith('</') || s.endsWith('/>')) return '';
+
+    // extract the tag name right after '<'
+    const m = /^<\s*([a-zA-Z0-9:-]+)/.exec(s);
+    if (!m) return '';
+
+    const tag = m[1];
+    return `</${tag}>`;
+}
+
 
 /** Line-level recognizer at start-of-line */
 function matchLineSyntax(src, i) {
@@ -111,13 +146,36 @@ async function* createUnifiedStreamSync(src, opts = {}) {
 
         // 2) Inside fenced code: everything is plain display until the closing fence
         if (inFence) {
+            // --- NEW: clump whitespace ---
+            if (isWS(ch)) {
+                const len = readWS(src, i);
+                const run = src.slice(i, i + len);
+                yield { type: 'display', kind: 'whitespace', value: run };
+                i += len;
+                continue;
+            }
+            // otherwise emit next grapheme
             const g = [...graphemes(src.slice(i))][0];
-            yield { type: 'display', value: g };
+            yield { type: 'display', kind: 'default', value: g };
             i += g.length;
             continue;
         }
 
-        // 3) Inline marks outside fenced code
+        // 2.5) HTML tags (outside code contexts): emit as syntax open/close
+        if (!inInlineCode && ch === '<') {
+            const closeIdx = src.indexOf('>', i + 1);
+            if (closeIdx !== -1) {
+                const tagText = src.slice(i, closeIdx + 1);
+                // very light check: if it starts with "</" it's a close; if it ends with "/>" treat as 'open'
+                const isClose = tagText.startsWith('</');
+                yield { type: 'syntax', kind: isClose ? 'close' : 'open', value: tagText };
+                i = closeIdx + 1;
+                continue;
+            }
+            // if no '>', fall through and treat '<' as display
+        }
+
+        // 3) Inline marks outside inline code (and not in fence)
         if (!inInlineCode) {
             // Strong ** open/close (check before single *)
             if (ch === '*' && next === '*') {
@@ -177,7 +235,17 @@ async function* createUnifiedStreamSync(src, opts = {}) {
             }
         }
 
-        // 4) Default display grapheme
+        // 4) Default display:
+        // --- NEW: clump whitespace first ---
+        if (isWS(ch)) {
+            const len = readWS(src, i);
+            const run = src.slice(i, i + len);
+            yield { type: 'display', kind: 'whitespace', value: run };
+            i += len;
+            continue;
+        }
+
+        // otherwise emit one grapheme
         const g = [...graphemes(src.slice(i))][0];
         yield { type: 'display', kind: 'default', value: g };
         i += g.length;
@@ -185,7 +253,6 @@ async function* createUnifiedStreamSync(src, opts = {}) {
 }
 
 // index.cjs or index.mjs (whichever you export)
-
 export async function* createUnifiedStream(src, options = {}) {
     // turn sync → async without changing consumers
     for await (const tok of createUnifiedStreamSync(src, options)) {

@@ -1,0 +1,54 @@
+<!-- TERMINAL WIDGET (embedded) -->
+<div class="terminal-section">
+  <div class="terminal-window rounded-3 p-3">
+    <small class="terminal-caption">/org/acme • agentic terminal stream</small>
+    <pre class="terminal-output">
+<span class="token-prompt">$</span> <span class="token-cmd">cd</span> <span class="token-path">/workspace/acme-fullstack</span>
+<span class="muted"># switching to working directory</span>
+
+<span class="badge fs">[fs]</span> <span class="token-fs">created</span> <span class="token-path">/sandbox/docker-compose.yml</span>
+<span class="badge fs">[fs]</span> <span class="token-fs">created</span> <span class="token-path">/sandbox/apps/web/</span>
+<span class="badge fs">[fs]</span> <span class="token-fs">created</span> <span class="token-path">/sandbox/apps/api/</span>
+<span class="badge fs">[fs]</span> <span class="token-fs">wrote</span>   <span class="token-path">/sandbox/infra/db/init/001_init.sql</span> <span class="muted">(436 B)</span>
+
+<span class="token-prompt">$</span> <span class="token-cmd">ng</span> <span class="token-arg">new</span> <span class="token-path">apps/web</span> <span class="token-arg">--standalone --style=scss --routing</span>
+<span class="badge exec">[exec]</span> <span class="token-exec">Angular project created</span> <span class="muted">(standalone, SCSS, routing)</span>
+
+<span class="token-prompt">$</span> <span class="token-cmd">poetry</span> <span class="token-arg">new</span> <span class="token-path">apps/api</span> && <span class="token-cmd">poetry</span> <span class="token-arg">add</span> flask gunicorn psycopg2-binary
+<span class="badge exec">[exec]</span> <span class="token-exec">Flask API scaffolded</span> <span class="muted">(gunicorn, psycopg)</span>
+
+<span class="token-prompt">$</span> <span class="token-cmd">cat</span> <span class="token-path">/sandbox/docker-compose.yml</span>
+services:
+  web:
+    build: ./apps/web
+    ports: [ "4200:4200" ]
+    depends_on: [ api ]
+  api:
+    build: ./apps/api
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/postgres
+    ports: [ "8080:8080" ]
+    depends_on: [ db ]
+  db:
+    image: postgres:16
+    environment:
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - acme_pgdata:/var/lib/postgresql/data
+volumes:
+  acme_pgdata: {{ '{}' }}
+
+      <span class="token-prompt">$</span> <span class="token-cmd">pnpm</span> <span class="token-arg">i</span> <span class="muted"># web deps</span>
+<span class="badge exec">[exec]</span> <span class="token-exec">installed</span> <span class="muted">132 packages</span>
+
+<span class="token-prompt">$</span> <span class="token-cmd">pytest</span> <span class="token-arg">-q</span> <span class="muted"># API tests</span>
+<span class="badge ok">[ok]</span> <span class="token-ok">37 tests passed</span> <span class="muted">in 18.2s</span>
+
+<span class="token-prompt">$</span> <span class="token-cmd">git</span> <span class="token-arg">commit -am</span> <span class="token-str">"feat: bootstrap web/api, compose, db volume"</span>
+<span class="badge exec">[exec]</span> <span class="token-exec">commit</span> <span class="muted">abc1234</span>
+
+<span class="token-prompt">$</span> <span class="token-cmd">gh</span> <span class="token-arg">pr create</span> <span class="token-arg">--fill</span>
+<span class="badge ok">[ok]</span> <span class="token-ok">opened PR #128</span> <span class="muted">• CI workflow attached</span>
+        </pre>
+  </div>
+</div>

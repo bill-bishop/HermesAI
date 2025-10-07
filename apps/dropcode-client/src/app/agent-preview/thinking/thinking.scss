@@ -57,8 +57,6 @@
   border-radius: 0 0 var(--radius) var(--radius);
   padding: 1rem;
   box-shadow: var(--shadow-lg);
-  max-height: 35em;
-  overflow: auto;
 }
 
 /* Message base */
@@ -84,6 +82,9 @@
 .msg.user  .avatar { order: 2; }
 .msg.user  .bubble { order: 1; justify-self: end; }
 
+/* Color variants */
+.msg.agent .bubble { background: rgba(88,242,155,0.08); border-color: rgba(88,242,155,0.18); margin-right: 3em; }
+.msg.user  .bubble { background: rgba(110,231,255,0.08); border-color: rgba(110,231,255,0.18); margin-left: 3em; }
 
 /* Thinking (system) */
 .thinking {
@@ -155,21 +156,43 @@
 
 /* Responsive */
 @media (max-width: 600px){ .url-bar{display:none;} }
+/* =======================
+   Chat Stagger Animations (variable speed)
+   ======================= */
 
-/* ================
-   Auto Fade-Up for all chat rows
-   ================ */
+/* Tunables */
+.chat.staggered {
 
-.chat > * {
-  animation: fadeUp 420ms ease-out both;
 }
 
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+/* Base animation for each direct child of .chat */
+.chat.staggered > * {
+  opacity: 0;
+  transform: translate3d(0, 8px, 0) scale(0.995);
+  filter: saturate(0.9) blur(0.3px);
+  animation: thinkIn 0.2s cubic-bezier(.2,.7,.2,1) forwards;
+  animation-delay: 0s;
+  will-change: opacity, transform, filter;
 }
 
-/* Accessibility */
-@media (prefers-reduced-motion: reduce) {
-  .chat > * { animation: none !important; }
+
+/* System "Thinking…" rows: shorter + subtle */
+.chat.staggered > .thinking {
+  animation-duration: calc(var(--duration-thinking) / var(--speed));
+  transform: translate3d(0, 6px, 0) scale(0.997);
+  filter: none;
+}
+
+/* Terminal block: a tad more dramatic */
+.chat.staggered > .terminal-section {
+  animation-duration: calc(var(--duration-terminal) / var(--speed));
+  transform: translate3d(0, 10px, 0) scale(0.992);
+}
+
+
+
+.thinking {
+
+  display: flex;
+  margin: 0.5em 3em;
 }

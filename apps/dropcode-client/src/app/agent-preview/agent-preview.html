@@ -11,7 +11,7 @@
   </div>
 
   <!-- Chat Thread -->
-  <div class="chat staggered">
+  <div class="chat staggered" #scrollMe>
     <ng-container *ngFor="let item of model">
       <ng-container *ngIf="item.type === 'user' || item.type === 'agent'">
         <app-chat-message [type]="item.type" [meta]="item.meta" [message]="item.template || ''"></app-chat-message>

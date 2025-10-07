@@ -1,4 +1,4 @@
-import {Component, OnDestroy, ChangeDetectorRef} from '@angular/core';
+import {Component, OnDestroy, ChangeDetectorRef, ViewChild, ElementRef, OnInit} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import {NgForOf, NgIf} from "@angular/common";
@@ -15,7 +15,10 @@ type QueueItem = { type: string, template?: string; delay?: number; meta?: any }
   templateUrl: './agent-preview.html',
   styleUrl: './agent-preview.scss'
 })
-export class AgentPreview {
+export class AgentPreview implements OnInit {
+  @ViewChild('scrollMe')
+  private agentPreviewChat!: ElementRef
+
   /** items you want rendered in the template (you'll *ngFor this) */
   model: QueueItem[] = [];
 
@@ -54,9 +57,7 @@ export class AgentPreview {
               <li><strong>CI:</strong> basic workflow: install → lint/test → build docker images.</li>
             </ul>
           </div>
-          <div class="cta">
-            If this sounds good, I'll implement this architecture in the live sandbox for you to preview now.
-          </div>`
+            If this sounds good, I'll implement this architecture in the live sandbox for you to preview now.`
     },
     {
       type: 'user',
@@ -132,7 +133,11 @@ export class AgentPreview {
 
     this.chatAnimation.done$.subscribe(() => {
       chatFrame += 1;
-      this.model.push(this.queue[chatFrame])
+      this.model.push(this.queue[chatFrame]);
+
+      setTimeout(() => {
+        this.agentPreviewChat.nativeElement.scrollTop = this.agentPreviewChat.nativeElement.scrollHeight;
+      });
     });
   }
 }
