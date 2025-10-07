@@ -29,8 +29,7 @@ export class AgentPreview {
     {
       type: 'user',
       meta: 'You • now',
-      template: `<!-- USER (right-aligned) -->
-          Make me a full-stack <strong>Angular 20</strong> + <strong>FlaskAPI</strong> + <strong>PostgreSQL</strong>
+      template: `Make me a full-stack <strong>Angular 20</strong> + <strong>FlaskAPI</strong> + <strong>PostgreSQL</strong>
           application and give me a <strong>docker compose</strong> entrypoint to spin everything up.`
     },
     {

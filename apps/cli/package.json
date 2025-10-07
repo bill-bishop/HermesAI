@@ -1,0 +1,22 @@
+{
+  "name": "hermesai",
+  "version": "0.0.1-prerelease-1",
+  "description": "Project Building Tools by HermesAI",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "github.com/bill-bishop/HermesAI"
+  },
+  "keywords": [
+    "ai",
+    "vibe",
+    "coding",
+    "scaffolding",
+    "cli"
+  ],
+  "author": "Bill Bishop",
+  "license": "ISC"
+}
