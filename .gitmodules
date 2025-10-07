@@ -1,3 +1,5 @@
 [submodule "apps/execution-sandbox"]
 	path = apps/execution-sandbox
 	url = https://github.com/bill-bishop/execution-sandbox.git
+[submodule "markityper"]
+	url = https://github.com/bill-bishop/markityper.git
