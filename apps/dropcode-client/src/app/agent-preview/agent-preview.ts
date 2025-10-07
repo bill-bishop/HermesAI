@@ -47,17 +47,13 @@ export class AgentPreview implements OnInit {
       type: 'agent',
       meta: 'HermesAI • plan ready',
       template: `Here's the plan!
-          <div class="plan">
-            <div class="plan-title">Summary</div>
-            <ul>
-              <li><strong>Frontend:</strong> Angular 20 (standalone, SCSS, routing) served via Vite dev in compose.</li>
-              <li><strong>API:</strong> Flask + Gunicorn, connects via <code>DATABASE_URL</code>.</li>
-              <li><strong>DB:</strong> Postgres 16 with named volume <code>acme_pgdata</code>.</li>
-              <li><strong>Compose:</strong> <code>web</code> ↔ <code>api</code> ↔ <code>db</code> with healthchecks; hot reload for dev.</li>
-              <li><strong>CI:</strong> basic workflow: install → lint/test → build docker images.</li>
-            </ul>
-          </div>
-            If this sounds good, I'll implement this architecture in the live sandbox for you to preview now.`
+##### Summary
+- **Frontend:** Angular 20 (standalone, SCSS, routing) served via Vite dev in compose.
+- **API:** Flask + Gunicorn, connects via <code>DATABASE_URL</code>.
+- **DB:** Postgres 16 with named volume <code>acme_pgdata</code>.
+- **Compose:** <code>web</code> ↔ <code>api</code> ↔ <code>db</code> with healthchecks; hot reload for dev.
+- **CI:** basic workflow: install → lint/test → build docker images.
+If this sounds good, I'll implement this architecture in the live sandbox for you to preview now.`
     },
     {
       type: 'user',
@@ -89,27 +85,7 @@ export class AgentPreview implements OnInit {
     {
       type: 'agent',
       meta: 'HermesAI • plan ready',
-      template: `<span>Done! The preview is live in the sandbox.</span>
-          <span class="check" aria-label="success" style="
-    display: inline-grid;
-    place-items: center;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    border: 2px solid var(--lime);
-    color: var(--lime);
-    font-weight: 800;
-    line-height: 1;">✓</span>
-          <a class="btn btn-primary btn-sm ms-auto" style="
-    margin-left: 2em !important;
-    font-size: 0.78rem;
-    padding: 0.3rem 0.55rem;
-    border-radius: 0.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    background: linear-gradient(180deg, rgba(84, 122, 255, 0.22), rgba(84, 122, 255, 0.08));
-    color: #e8e9f0;
-    cursor: pointer;
-">Preview</a>`
+      template: `Done! The preview is live in the [sandbox](https://hermesai.dev/early-access). **✓**`
     },
 
   ];
@@ -131,13 +107,42 @@ export class AgentPreview implements OnInit {
     let chatFrame = 0;
     this.model.push(this.queue[chatFrame]);
 
-    this.chatAnimation.done$.subscribe(() => {
-      chatFrame += 1;
-      this.model.push(this.queue[chatFrame]);
+    let scrollLoop = setInterval(() => {
+      this.agentPreviewChat.nativeElement.scrollTo({ top: this.agentPreviewChat.nativeElement.scrollHeight, behavior: 'smooth' });
+    }, 1500);
 
-      setTimeout(() => {
-        this.agentPreviewChat.nativeElement.scrollTop = this.agentPreviewChat.nativeElement.scrollHeight;
-      });
+    let restart = false;
+
+    this.chatAnimation.done$.subscribe(() => {
+      this.agentPreviewChat.nativeElement.scrollTo({ top: this.agentPreviewChat.nativeElement.scrollHeight, behavior: 'smooth' });
+      chatFrame += 1;
+      if (chatFrame === this.queue.length) {
+        clearInterval(scrollLoop);
+        return;
+      }
+
+      const currentFrame: QueueItem = this.queue[chatFrame];
+      this.model.push(currentFrame);
+
+      if (currentFrame.type === 'terminal') {
+        restart = true;
+        clearInterval(scrollLoop);
+        scrollLoop = setTimeout(() => {
+          this.agentPreviewChat.nativeElement.scrollTo({ top: this.agentPreviewChat.nativeElement.scrollTop + 1, behavior: 'smooth' });
+        }, 100);
+      }
+      else {
+        setTimeout(() => {
+          this.agentPreviewChat.nativeElement.scrollTo({ top: this.agentPreviewChat.nativeElement.scrollHeight, behavior: 'smooth' });
+        });
+        if (restart) {
+          clearInterval(scrollLoop);
+          scrollLoop = setInterval(() => {
+            this.agentPreviewChat.nativeElement.scrollTo({ top: this.agentPreviewChat.nativeElement.scrollHeight, behavior: 'smooth' });
+          }, 1000);
+        }
+      }
+
     });
   }
 }

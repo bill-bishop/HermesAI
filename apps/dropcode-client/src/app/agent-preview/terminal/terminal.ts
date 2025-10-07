@@ -15,6 +15,6 @@ export class Terminal implements OnInit {
   ngOnInit() {
     setTimeout(() => {
       this.chatAnimation.notifyDone();
-    }, 500);
+    }, 7000);
   }
 }
