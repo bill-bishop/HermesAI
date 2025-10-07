@@ -29,7 +29,7 @@
     "@angular/platform-browser": "^20.3.2",
     "@angular/router": "^20.3.2",
     "bootstrap": "^5.3.8",
-    "markityper": "file:../cli/modules/markityper",
+    "markityper": "^0.0.1-prerelease-3",
     "ngx-markdown": "^20.1.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
