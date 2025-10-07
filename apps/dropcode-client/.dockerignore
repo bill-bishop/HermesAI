@@ -4,7 +4,6 @@ npm-debug.log
 yarn-error.log
 
 # Build artifacts
-dist
 tmp
 coverage
 .angular
@@ -17,3 +16,4 @@ Thumbs.db
 .idea
 *.swp
 *.swo
+test-out
