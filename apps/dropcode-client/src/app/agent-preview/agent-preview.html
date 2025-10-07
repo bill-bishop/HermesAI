@@ -7,109 +7,21 @@
       <span class="dot bg-success"></span>
     </div>
     <div class="url-bar" role="textbox" aria-label="Address bar">https://hermesai.dev</div>
-    <div class="chrome-actions" aria-hidden="true">
-      <span class="pill"></span>
-    </div>
+    <div class="chrome-actions" aria-hidden="true"><span class="pill"></span></div>
   </div>
 
   <!-- Chat Thread -->
-  <div class="chat">
-    <!-- USER -->
-    <div class="msg user">
-      <div class="avatar">U</div>
-      <div class="bubble">
-        <div class="meta">You • now</div>
-        <div class="text">
-          Make me a full-stack <strong>Angular 20</strong> + <strong>FlaskAPI</strong> + <strong>PostgreSQL</strong>
-          application and give me a <strong>docker compose</strong> entrypoint to spin everything up.
-        </div>
-      </div>
-    </div>
-
-    <!-- AGENT (intro) -->
-    <div class="msg agent">
-      <div class="avatar">A</div>
-      <div class="bubble">
-        <div class="meta">HermesAI • planning…</div>
-        <div class="text">Scaffolding services, wiring CI, and provisioning database volumes.</div>
-      </div>
-    </div>
-
-    <!-- TERMINAL WIDGET (embedded) -->
-    <div class="terminal-section">
-      <div class="terminal-window rounded-3 p-3">
-        <!-- No inner traffic-light dots by design -->
-        <small class="terminal-caption">/org/acme • agentic terminal stream</small>
-
-        <pre class="terminal-output">
-<span class="token-prompt">$</span> <span class="token-cmd">cd</span> <span class="token-path">/workspace/acme-fullstack</span>
-<span class="muted"># switching to working directory</span>
-
-<span class="token-prompt">$</span> <span class="token-cmd">tree</span> <span class="token-arg">-L 1</span>
-.
-├─ apps
-├─ infra
-└─ README.md
-
-<span class="badge fs">[fs]</span> <span class="token-fs">created</span> <span class="token-path">/sandbox/docker-compose.yml</span>
-<span class="badge fs">[fs]</span> <span class="token-fs">created</span> <span class="token-path">/sandbox/apps/web/</span>
-<span class="badge fs">[fs]</span> <span class="token-fs">created</span> <span class="token-path">/sandbox/apps/api/</span>
-<span class="badge fs">[fs]</span> <span class="token-fs">wrote</span>   <span class="token-path">/sandbox/infra/db/init/001_init.sql</span> <span class="muted">(436 B)</span>
-
-<span class="token-prompt">$</span> <span class="token-cmd">ng</span> <span class="token-arg">new</span> <span class="token-path">apps/web</span> <span class="token-arg">--standalone --style=scss --routing</span>
-<span class="badge exec">[exec]</span> <span class="token-exec">Angular project created</span> <span class="muted">(standalone, SCSS, routing)</span>
-
-<span class="token-prompt">$</span> <span class="token-cmd">poetry</span> <span class="token-arg">new</span> <span class="token-path">apps/api</span> && <span class="token-cmd">poetry</span> <span class="token-arg">add</span> flask gunicorn psycopg2-binary
-<span class="badge exec">[exec]</span> <span class="token-exec">Flask API scaffolded</span> <span class="muted">(gunicorn, psycopg)</span>
-
-<span class="token-prompt">$</span> <span class="token-cmd">cat</span> <span class="token-path">/sandbox/docker-compose.yml</span>
-services:
-  web:
-    build: ./apps/web
-    ports: [ "4200:4200" ]
-    depends_on: [ api ]
-  api:
-    build: ./apps/api
-    environment:
-      - DATABASE_URL=postgresql://postgres:postgres&#64;db:5432/postgres
-    ports: [ "8080:8080" ]
-    depends_on: [ db ]
-  db:
-    image: postgres:16
-    environment:
-      - POSTGRES_PASSWORD=postgres
-    volumes:
-      - acme_pgdata:/var/lib/postgresql/data
-volumes:
-  acme_pgdata: {{ '{}' }}
-
-<span class="token-prompt">$</span> <span class="token-cmd">pnpm</span> <span class="token-arg">i</span> <span class="muted"># web deps</span>
-<span class="badge exec">[exec]</span> <span class="token-exec">installed</span> <span class="muted">132 packages</span>
-
-<span class="token-prompt">$</span> <span class="token-cmd">pytest</span> <span class="token-arg">-q</span> <span class="muted"># API tests</span>
-<span class="badge ok">[ok]</span> <span class="token-ok">37 tests passed</span> <span class="muted">in 18.2s</span>
-
-<span class="token-prompt">$</span> <span class="token-cmd">git</span> <span class="token-arg">commit -am</span> <span class="token-str">"feat: bootstrap web/api, compose, db volume"</span>
-<span class="badge exec">[exec]</span> <span class="token-exec">commit</span> <span class="muted">abc1234</span>
-
-<span class="token-prompt">$</span> <span class="token-cmd">gh</span> <span class="token-arg">pr create</span> <span class="token-arg">--fill</span>
-<span class="badge ok">[ok]</span> <span class="token-ok">opened PR #128</span> <span class="muted">• CI workflow attached</span>
-        </pre>
-      </div>
-    </div>
-
-    <!-- AGENT (result + actions) -->
-    <div class="msg agent">
-      <div class="avatar">A</div>
-      <div class="bubble">
-        <div class="meta">HermesAI • just now</div>
-        <div class="text d-flex align-items-center gap-2">
-          <span>Done!</span>
-          <span class="check" aria-label="success">✓</span>
-          <a class="btn btn-primary btn-sm ms-auto" routerLink="/early-access">Preview</a>
-        </div>
-        <div class="hint">Run <code>docker compose up --build</code> to start <code>web</code>, <code>api</code>, and <code>db</code>.</div>
-      </div>
-    </div>
+  <div class="chat staggered">
+    <ng-container *ngFor="let item of model">
+      <ng-container *ngIf="item.type === 'user' || item.type === 'agent'">
+        <app-chat-message [type]="item.type" [meta]="item.meta" [message]="item.template || ''"></app-chat-message>
+      </ng-container>
+      <ng-container *ngIf="item.type === 'thinking'">
+        <app-thinking [message]="item.template || ''"></app-thinking>
+      </ng-container>
+      <ng-container *ngIf="item.type === 'terminal'">
+        <app-terminal></app-terminal>
+      </ng-container>
+    </ng-container>
   </div>
 </section>
