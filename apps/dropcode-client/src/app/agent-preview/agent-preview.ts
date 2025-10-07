@@ -128,8 +128,8 @@ If this sounds good, I'll implement this architecture in the live sandbox for yo
         restart = true;
         clearInterval(scrollLoop);
         scrollLoop = setTimeout(() => {
-          this.agentPreviewChat.nativeElement.scrollTo({ top: this.agentPreviewChat.nativeElement.scrollTop + 1, behavior: 'smooth' });
-        }, 100);
+          this.agentPreviewChat.nativeElement.scrollTo({ top: this.agentPreviewChat.nativeElement.scrollTop + 250, behavior: 'smooth' });
+        }, 1000);
       }
       else {
         setTimeout(() => {
