@@ -77,3 +77,14 @@ footer a:hover {
   font-size: 1.8em;
   margin: 0 0 -10px 1px;
 }
+
+.space-bg
+{
+  background-image: url('/assets/bg.png');
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+.text-lg {
+  font-size: 2rem;
+}
