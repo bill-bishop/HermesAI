@@ -18,9 +18,9 @@
 
 /* ---------- Shell ---------- */
 .browser-window {
-  background: radial-gradient(1200px 600px at 50% -100px, #192036 0%, var(--bg) 60%);
+  background-color: #0b0b12;
   color: #e8e9f0;
-  padding: 2.2rem 0;
+  padding: 0 0 3rem 0;
   display: grid;
   place-items: center;
 }
@@ -57,7 +57,7 @@
   border-radius: 0 0 var(--radius) var(--radius);
   padding: 1rem;
   box-shadow: var(--shadow-lg);
-  max-height: 35em;
+  height: 30em;
   overflow: auto;
 }
 
