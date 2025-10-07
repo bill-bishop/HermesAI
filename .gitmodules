@@ -3,3 +3,6 @@
 	url = https://github.com/bill-bishop/execution-sandbox.git
 [submodule "markityper"]
 	url = https://github.com/bill-bishop/markityper.git
+[submodule "apps/cli/modules/markityper"]
+	path = apps/cli/modules/markityper
+	url = https://github.com/bill-bishop/markityper.git
