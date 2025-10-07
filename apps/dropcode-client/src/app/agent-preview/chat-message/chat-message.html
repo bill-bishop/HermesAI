@@ -1,9 +1,9 @@
 <div class="msg-container {{ type }}">
-  <div class="msg {{type}} fit-content">
+  <div class="msg {{type}} fit-content-screen">
     <div class="avatar">{{avatarLetter()}}</div>
-    <div class="bubble fit-content">
-      <div class="meta fit-content">{{meta}}</div>
-      <div class="fit-content">
+    <div class="bubble fit-content-screen">
+      <div class="meta fit-content-screen">{{meta}}</div>
+      <div class="fit-content-screen">
         <markityper [text]="message" [lps]="100" (onComplete)="this.chatAnimation.notifyDone()"></markityper>
       </div>
     </div>
