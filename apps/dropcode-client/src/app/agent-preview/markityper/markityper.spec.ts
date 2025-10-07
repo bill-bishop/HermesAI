@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { Markityper } from './markityper';
+import { MarkityperComponent } from './markityper';
 
 describe('Markityper', () => {
-  let component: Markityper;
-  let fixture: ComponentFixture<Markityper>;
+  let component: MarkityperComponent;
+  let fixture: ComponentFixture<MarkityperComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [Markityper]
+      imports: [MarkityperComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(Markityper);
+    fixture = TestBed.createComponent(MarkityperComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });
