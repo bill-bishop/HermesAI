@@ -1,3 +1,4 @@
+use serde::Deserialize;
 use axum::{
     extract::{Path, Query, State},
     routing::{get, post},
@@ -53,14 +54,18 @@ async fn start_session(
 async fn stream_session(
     State(state): State<AppState>,
     Path(id): Path<String>,
+    Query(q): Query<FromParam>,
 ) -> Result<impl axum::response::IntoResponse, (StatusCode, String)> {
     let guard = state.sessions.read().await;
-    let Some(h) = guard.get(&id) else {
-        return Err((StatusCode::NOT_FOUND, "session not found".into()));
-    };
+    let Some(h) = guard.get(&id) else { return Err((StatusCode::NOT_FOUND, "session not found".into())); };
     let rx = h.tx.subscribe();
-    Ok(crate::io::stream::ndjson_stream(rx, 0))
+    let backlog = {
+        let b = h.backlog.lock();
+        b.iter().cloned().collect::<Vec<_>>()
+    };
+    Ok(crate::io::stream::ndjson_stream_with_backlog(backlog, rx, q.from.unwrap_or(0)))
 }
+
 
 async fn write_session(
     State(state): State<AppState>,
@@ -132,12 +137,15 @@ async fn stream_job(
     Query(q): Query<FromParam>,
 ) -> Result<impl axum::response::IntoResponse, (StatusCode, String)> {
     let jobs = state.jobs.read().await;
-    let Some(h) = jobs.get(&id) else {
-        return Err((StatusCode::NOT_FOUND, "job not found".into()));
-    };
+    let Some(h) = jobs.get(&id) else { return Err((StatusCode::NOT_FOUND, "job not found".into())); };
     let rx = h.tx.subscribe();
-    Ok(crate::io::stream::ndjson_stream(rx, q.from.unwrap_or(0)))
+    let backlog = {
+        let b = h.backlog.lock();
+        b.iter().cloned().collect::<Vec<_>>()
+    };
+    Ok(crate::io::stream::ndjson_stream_with_backlog(backlog, rx, q.from.unwrap_or(0)))
 }
+
 
 async fn status_job(
     State(state): State<AppState>,

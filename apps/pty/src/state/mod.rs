@@ -1,10 +1,9 @@
-// src/state/mod.rs
 use crate::models::StreamFrame;
 use parking_lot::Mutex;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
-use tokio::sync::{broadcast, RwLock};
 use tokio::io::unix::AsyncFd;
+use tokio::sync::{broadcast, RwLock};
 
 /// Shared application state, holding all running jobs and PTY sessions.
 #[derive(Clone)]
@@ -27,6 +26,8 @@ pub struct JobHandle {
     pub latest_seq: Arc<Mutex<u64>>,
     pub tx: broadcast::Sender<StreamFrame>,
     pub exit_code: Arc<Mutex<Option<i32>>>,
+    /// small ring buffer for replay
+    pub backlog: Arc<Mutex<VecDeque<StreamFrame>>>,
 }
 
 /// A handle for interactive PTY shell sessions.
@@ -38,6 +39,8 @@ pub struct SessionHandle {
     pub reader: Arc<AsyncFd<std::fs::File>>,
     pub writer: Arc<AsyncFd<std::fs::File>>,
     pub pid: i32,
+    /// small ring buffer for replay
+    pub backlog: Arc<Mutex<VecDeque<StreamFrame>>>,
 }
 
 /// Unique ID generator for sessions/jobs.

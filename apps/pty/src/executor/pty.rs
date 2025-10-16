@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use crate::models::StreamFrame;
 use crate::state::SessionHandle;
 
@@ -35,12 +36,12 @@ pub fn spawn_pty_shell(shell: &str, cols: u16, rows: u16) -> anyhow::Result<Sess
             }
         }
         ForkptyResult::Parent { child, master } => {
-            // PARENT: mark master PTY nonblocking so AsyncFd readiness works
+            // Mark master nonblocking so AsyncFd readiness works
             let mfd = master.as_raw_fd();
             let cur = OFlag::from_bits_truncate(fcntl(mfd, FcntlArg::F_GETFL)?);
             fcntl(mfd, FcntlArg::F_SETFL(cur | OFlag::O_NONBLOCK))?;
 
-            // Dedicated handles: dup once for reader; original becomes writer
+            // Dedicated handles: dup for reader; original becomes writer
             let rd_raw  = dup(mfd)?;
             let rd_file = unsafe { std::fs::File::from_raw_fd(rd_raw) };
             let wr_file = unsafe { std::fs::File::from_raw_fd(master.into_raw_fd()) };
@@ -51,15 +52,19 @@ pub fn spawn_pty_shell(shell: &str, cols: u16, rows: u16) -> anyhow::Result<Sess
             let (tx, _rx) = tokio::sync::broadcast::channel::<StreamFrame>(1024);
             let latest_seq = Arc::new(Mutex::new(0u64));
             let exit_code  = Arc::new(Mutex::new(None));
+            let backlog    = Arc::new(Mutex::new(VecDeque::with_capacity(1024)));
 
-            // Reader task
-            let txr = tx.clone();
-            let seqr = latest_seq.clone();
-            let reader_clone = reader.clone();
+            // Clone Arcs for the task so originals remain for SessionHandle
+            let txr        = tx.clone();
+            let seqr       = latest_seq.clone();
+            let exit_code_c= exit_code.clone();
+            let backlog_c  = backlog.clone();
+            let reader_c   = reader.clone();
+
             tokio::spawn(async move {
                 let mut buf = [0u8; 4096];
                 loop {
-                    match reader_clone.readable().await {
+                    match reader_c.readable().await {
                         Ok(mut guard) => {
                             let res = guard.try_io(|inner| {
                                 let fd = inner.get_ref().as_raw_fd();
@@ -70,30 +75,54 @@ pub fn spawn_pty_shell(shell: &str, cols: u16, rows: u16) -> anyhow::Result<Sess
                             });
                             match res {
                                 Ok(Ok(0)) => {
-                                    debug!("PTY EOF");
+                                    // EOF
+                                    let mut s = seqr.lock();
+                                    *s += 1;
+                                    {
+                                        let mut b = backlog_c.lock();
+                                        let ev = StreamFrame { t: "event".into(), seq: *s, d: "exit:None".into() };
+                                        if b.len() == b.capacity() { b.pop_front(); }
+                                        b.push_back(ev.clone());
+                                        let _ = txr.send(ev);
+                                    }
+                                    *exit_code_c.lock() = None;
                                     break;
                                 }
                                 Ok(Ok(n)) => {
                                     debug!("PTY read {} bytes", n);
-                                    let s = String::from_utf8_lossy(&buf[..n]).to_string();
-                                    let mut seq = seqr.lock();
-                                    *seq += 1;
-                                    let _ = txr.send(StreamFrame { t: "stdout".into(), seq: *seq, d: s });
+                                    let sdata = String::from_utf8_lossy(&buf[..n]).to_string();
+                                    let mut s = seqr.lock();
+                                    *s += 1;
+                                    let frame = StreamFrame { t: "stdout".into(), seq: *s, d: sdata };
+                                    {
+                                        let mut b = backlog_c.lock();
+                                        if b.len() == b.capacity() { b.pop_front(); }
+                                        b.push_back(frame.clone());
+                                    }
+                                    let _ = txr.send(frame);
                                 }
                                 Ok(Err(e)) => {
                                     if e.kind() == std::io::ErrorKind::WouldBlock {
-                                        // spurious readability; try again
                                         continue;
                                     } else {
                                         debug!("PTY read error: {}", e);
+                                        let mut s = seqr.lock();
+                                        *s += 1;
+                                        {
+                                            let mut b = backlog_c.lock();
+                                            let ev = StreamFrame { t: "event".into(), seq: *s, d: "exit:None".into() };
+                                            if b.len() == b.capacity() { b.pop_front(); }
+                                            b.push_back(ev.clone());
+                                            let _ = txr.send(ev);
+                                        }
+                                        *exit_code_c.lock() = None;
                                         break;
                                     }
                                 }
-                                Err(_would_block) => continue, // readiness false positive; try again
+                                Err(_would_block) => continue,
                             }
-
                         }
-                        Err(_) => break,
+                        Err(_e) => break,
                     }
                 }
             });
@@ -105,8 +134,10 @@ pub fn spawn_pty_shell(shell: &str, cols: u16, rows: u16) -> anyhow::Result<Sess
                 reader,
                 writer,
                 pid: child.as_raw(),
+                backlog,
             });
         }
+
     }
 }
 
