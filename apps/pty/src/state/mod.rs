@@ -5,7 +5,6 @@ use std::sync::Arc;
 use tokio::io::unix::AsyncFd;
 use tokio::sync::{broadcast, RwLock};
 
-/// Shared application state, holding all running jobs and PTY sessions.
 #[derive(Clone)]
 pub struct AppState {
     pub jobs: Arc<RwLock<HashMap<String, JobHandle>>>,
@@ -21,16 +20,13 @@ impl AppState {
     }
 }
 
-/// A handle for noninteractive command execution jobs.
 pub struct JobHandle {
     pub latest_seq: Arc<Mutex<u64>>,
     pub tx: broadcast::Sender<StreamFrame>,
     pub exit_code: Arc<Mutex<Option<i32>>>,
-    /// small ring buffer for replay
     pub backlog: Arc<Mutex<VecDeque<StreamFrame>>>,
 }
 
-/// A handle for interactive PTY shell sessions.
 #[derive(Clone)]
 pub struct SessionHandle {
     pub latest_seq: Arc<Mutex<u64>>,
@@ -39,11 +35,9 @@ pub struct SessionHandle {
     pub reader: Arc<AsyncFd<std::fs::File>>,
     pub writer: Arc<AsyncFd<std::fs::File>>,
     pub pid: i32,
-    /// small ring buffer for replay
     pub backlog: Arc<Mutex<VecDeque<StreamFrame>>>,
 }
 
-/// Unique ID generator for sessions/jobs.
 pub mod ids {
     use uuid::Uuid;
     pub fn new_id(prefix: &str) -> String {

@@ -1,11 +1,24 @@
-use serde::Deserialize;
+use std::path::Path;
 
-#[derive(Debug, Deserialize, Clone)]
-pub struct Config { pub namespaces: Namespaces, pub limits: Limits, pub timeouts: Timeouts }
-#[derive(Debug, Deserialize, Clone)]
-pub struct Namespaces { pub enable: bool, pub pid: bool, pub mount: bool, pub user: bool, pub net: bool }
-#[derive(Debug, Deserialize, Clone)]
-pub struct Limits { pub cpu_ms: u64, pub mem_mb: u64, pub fsize_mb: u64, pub nproc: u64, pub nofile: u64 }
-#[derive(Debug, Deserialize, Clone)]
-pub struct Timeouts { pub job_ms: u64, pub grace_ms: u64, pub idle_session_ms: u64 }
-impl Config { pub fn load() -> anyhow::Result<Self> { Ok(toml::from_str(&std::fs::read_to_string("config/sandbox.toml")?)?) } }
+#[derive(Clone, Debug)]
+pub struct ShellProfile {
+    pub program: String,
+    pub args: Vec<String>,
+}
+
+pub fn resolve_profile(name: Option<&str>) -> ShellProfile {
+    let name = name.unwrap_or("default").to_ascii_lowercase();
+    match name.as_str() {
+        "posix" => ShellProfile { program: "/bin/sh".into(), args: vec!["-i".into()] },
+        "zsh" => ShellProfile { program: "/bin/zsh".into(), args: vec!["-li".into()] },
+        "busybox" => ShellProfile { program: "/bin/busybox".into(), args: vec!["sh".into(), "-i".into()] },
+        _ => {
+            let bash = "/bin/bash";
+            if Path::new(bash).exists() {
+                ShellProfile { program: bash.into(), args: vec!["-li".into()] }
+            } else {
+                ShellProfile { program: "/bin/sh".into(), args: vec!["-i".into()] }
+            }
+        }
+    }
+}
