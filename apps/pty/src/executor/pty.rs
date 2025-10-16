@@ -1,107 +1,155 @@
 use crate::models::StreamFrame;
 use crate::state::SessionHandle;
-use nix::pty::{openpty, Winsize};
-use nix::unistd::{fork, ForkResult, setsid, dup2, close, execvp, dup, read as nix_read, write as nix_write};
-use std::ffi::CString;
-use std::os::fd::{AsRawFd, IntoRawFd, FromRawFd, BorrowedFd};
+
 use parking_lot::Mutex;
 use std::sync::Arc;
+use tracing::debug;
+
+use nix::fcntl::{fcntl, FcntlArg, OFlag};
+use nix::pty::{forkpty, ForkptyResult, Winsize};
+use nix::unistd::{dup, execvp, read as nix_read, write as nix_write};
+use std::ffi::CString;
+use std::os::fd::{AsRawFd, FromRawFd, IntoRawFd, BorrowedFd};
 use tokio::io::unix::AsyncFd;
 
-pub fn spawn_pty_shell(shell:&str,cols:u16,rows:u16)->anyhow::Result<SessionHandle>{
-    let ws=Winsize{ws_row:rows,ws_col:cols,ws_xpixel:0,ws_ypixel:0};
-    let pty=openpty(Some(&ws),None)?;
-    match unsafe{fork()}?{
-        ForkResult::Child=>{
-            setsid()?;
-            unsafe{libc::ioctl(pty.slave.as_raw_fd(),libc::TIOCSCTTY,0)};
-            dup2(pty.slave.as_raw_fd(),0)?;dup2(pty.slave.as_raw_fd(),1)?;dup2(pty.slave.as_raw_fd(),2)?;
-            let _=close(pty.master.as_raw_fd());let _=close(pty.slave.as_raw_fd());
-            // minimal env for real shells
-            std::env::set_var("TERM", "xterm-256color");
-            if std::env::var_os("PATH").is_none() {
-                std::env::set_var("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin");
-            }
-            // prefer interactive login shell args: "-li"
-            // execvp(argv[0], argv) — pass program + args
-            let prog = CString::new(shell).unwrap();
-            let arg0 = prog.clone();
-            let li   = CString::new("-li").unwrap();
-            let args = &[arg0, li];
-            execvp(&prog, args).expect("exec failed");
-            unsafe{libc::_exit(127);}
-        }
-        ForkResult::Parent{child}=>{
-            let _=close(pty.slave.as_raw_fd());
-            let master_fd = pty.master.as_raw_fd();
-            let rd = unsafe{ std::fs::File::from_raw_fd(dup(master_fd)?) };
-            let wr = unsafe{ std::fs::File::from_raw_fd(pty.master.into_raw_fd()) };
-            let reader = Arc::new(AsyncFd::new(rd)?);
-            let writer = Arc::new(AsyncFd::new(wr)?);
-            let (tx,_)=tokio::sync::broadcast::channel::<StreamFrame>(1024);
-            let latest_seq=Arc::new(Mutex::new(0u64));
-            let exit_code=Arc::new(Mutex::new(None));
+pub fn spawn_pty_shell(shell: &str, cols: u16, rows: u16) -> anyhow::Result<SessionHandle> {
+    // Prepare C strings BEFORE fork (avoid allocations in child)
+    let prog = CString::new(shell).expect("shell CString");
+    let arg0 = prog.clone();
+    let li   = CString::new("-li").expect("CString -li");
+    let args = [arg0, li];
 
-            let txr=tx.clone();let seqr=latest_seq.clone();let reader_clone=reader.clone();
-            tokio::spawn(async move{
-                let mut buf=[0u8;4096];
-                loop{
-                    match reader_clone.readable().await{
-                        Ok(mut guard)=>{
-                            let res = guard.try_io(|inner|{
-                                // nix_read expects RawFd (i32), not AsFd
+    let ws = Winsize { ws_row: rows, ws_col: cols, ws_xpixel: 0, ws_ypixel: 0 };
+
+    // SAFETY: forkpty crosses the FFI boundary and forks the process.
+    // In the child branch below we only call execvp then _exit.
+    let fp = unsafe { forkpty(Some(&ws), None)? };
+
+    match fp {
+        ForkptyResult::Child => {
+            // CHILD: only async-signal-safe ops; do not allocate or log.
+            unsafe {
+                // Attempt to exec; on any error, immediately _exit(127).
+                let _ = execvp(&prog, &args);
+                libc::_exit(127); // never returns
+            }
+        }
+        ForkptyResult::Parent { child, master } => {
+            // PARENT: mark master PTY nonblocking so AsyncFd readiness works
+            let mfd = master.as_raw_fd();
+            let cur = OFlag::from_bits_truncate(fcntl(mfd, FcntlArg::F_GETFL)?);
+            fcntl(mfd, FcntlArg::F_SETFL(cur | OFlag::O_NONBLOCK))?;
+
+            // Dedicated handles: dup once for reader; original becomes writer
+            let rd_raw  = dup(mfd)?;
+            let rd_file = unsafe { std::fs::File::from_raw_fd(rd_raw) };
+            let wr_file = unsafe { std::fs::File::from_raw_fd(master.into_raw_fd()) };
+
+            let reader = Arc::new(AsyncFd::new(rd_file)?);
+            let writer = Arc::new(AsyncFd::new(wr_file)?);
+
+            let (tx, _rx) = tokio::sync::broadcast::channel::<StreamFrame>(1024);
+            let latest_seq = Arc::new(Mutex::new(0u64));
+            let exit_code  = Arc::new(Mutex::new(None));
+
+            // Reader task
+            let txr = tx.clone();
+            let seqr = latest_seq.clone();
+            let reader_clone = reader.clone();
+            tokio::spawn(async move {
+                let mut buf = [0u8; 4096];
+                loop {
+                    match reader_clone.readable().await {
+                        Ok(mut guard) => {
+                            let res = guard.try_io(|inner| {
                                 let fd = inner.get_ref().as_raw_fd();
-                                match nix_read(fd, &mut buf){
+                                match nix_read(fd, &mut buf) {
                                     Ok(n) => Ok(n),
                                     Err(e) => Err(std::io::Error::from_raw_os_error(e as i32)),
                                 }
                             });
-                            match res{
-                                Ok(Ok(0))=>break,
+                            match res {
+                                Ok(Ok(0)) => {
+                                    debug!("PTY EOF");
+                                    break;
+                                }
                                 Ok(Ok(n)) => {
+                                    debug!("PTY read {} bytes", n);
                                     let s = String::from_utf8_lossy(&buf[..n]).to_string();
                                     let mut seq = seqr.lock();
                                     *seq += 1;
-                                    let _ = txr.send(StreamFrame { t:"stdout".into(), seq:*seq, d:s });
+                                    let _ = txr.send(StreamFrame { t: "stdout".into(), seq: *seq, d: s });
                                 }
-                                Ok(Err(_))=>break,
-                                Err(_)=>continue,
+                                Ok(Err(e)) => {
+                                    if e.kind() == std::io::ErrorKind::WouldBlock {
+                                        // spurious readability; try again
+                                        continue;
+                                    } else {
+                                        debug!("PTY read error: {}", e);
+                                        break;
+                                    }
+                                }
+                                Err(_would_block) => continue, // readiness false positive; try again
                             }
+
                         }
-                        Err(_)=>break,
+                        Err(_) => break,
                     }
                 }
             });
 
-            Ok(SessionHandle{latest_seq,tx,exit_code,reader,writer,pid:child.as_raw()})
+            return Ok(SessionHandle {
+                latest_seq,
+                tx,
+                exit_code,
+                reader,
+                writer,
+                pid: child.as_raw(),
+            });
         }
     }
 }
 
-pub async fn write_pty(h:&SessionHandle,data:&str)->anyhow::Result<()>{
-    let writer=h.writer.clone();
-    let bytes=data.as_bytes();
-    let mut off=0usize;
-    while off<bytes.len(){
+
+pub async fn write_pty(h: &SessionHandle, data: &str) -> anyhow::Result<()> {
+    let writer = h.writer.clone();
+    let bytes = data.as_bytes();
+    let mut off = 0usize;
+    while off < bytes.len() {
         let mut guard = writer.writable().await?;
-        let res = guard.try_io(|inner|{
-            // use BorrowedFd to satisfy AsFd bound on nix_write
+        let res = guard.try_io(|inner| {
             let raw = inner.get_ref().as_raw_fd();
             let fd  = unsafe { BorrowedFd::borrow_raw(raw) };
-            match nix_write(fd, &bytes[off..]){
-                Ok(n)=>Ok(n),
-                Err(e)=>Err(std::io::Error::from_raw_os_error(e as i32)),
+            match nix_write(fd, &bytes[off..]) {
+                Ok(n) => Ok(n),
+                Err(e) => Err(std::io::Error::from_raw_os_error(e as i32)),
             }
         });
-        match res{
-            Ok(Ok(0)) => break,                 // wrote nothing -> done
-            Ok(Ok(n)) => { off += n; }          // progress
-            Ok(Err(e)) => return Err(e.into()), // real I/O error
-            Err(_would_block) => continue,      // spurious readiness -> retry
+        match res {
+            Ok(Ok(0)) => {
+                debug!("PTY write returned 0 (done)");
+                break;
+            }
+            Ok(Ok(n)) => {
+                off += n;
+                debug!("PTY wrote {} bytes (total {})", n, off);
+            }
+            Ok(Err(e)) => {
+                if e.kind() == std::io::ErrorKind::WouldBlock {
+                    // try again after next readiness
+                    continue;
+                } else {
+                    debug!("PTY write error: {}", e);
+                    return Err(e.into());
+                }
+            }
+            Err(_would_block) => continue,
         }
+
     }
     Ok(())
 }
+
 
 pub async fn resize_pty(h:&SessionHandle,cols:u16,rows:u16)->anyhow::Result<()>{
     let fd=h.reader.as_raw_fd();

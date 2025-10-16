@@ -71,6 +71,7 @@ async fn write_session(
     let Some(h) = guard.get(&id) else {
         return Err((StatusCode::NOT_FOUND, "session not found".into()));
     };
+    tracing::debug!("write_session: {} bytes to {}", body.data.len(), id);
     pty::write_pty(h, &body.data)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
