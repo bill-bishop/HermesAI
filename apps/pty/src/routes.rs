@@ -1,4 +1,3 @@
-use serde::Deserialize;
 use axum::{
     extract::{Path, Query, State},
     routing::{get, post},
