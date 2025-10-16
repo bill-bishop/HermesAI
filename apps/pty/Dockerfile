@@ -6,7 +6,7 @@ COPY src ./src
 RUN cargo build --release
 
 FROM debian:bookworm
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates bash coreutils && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates bash coreutils curl jq && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /app/target/release/isolated-exec /usr/local/bin/isolated-exec
 COPY config /app/config
