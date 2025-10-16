@@ -1,0 +1,27 @@
+[namespaces]
+enable = false
+pid = true
+mount = true
+user = true
+net = false
+
+[mounts]
+root_ro = "/opt/isoexec/base-root"
+workspace_host = "/srv/workspaces"
+workspace_in_sandbox = "/home/tenant"
+tmpfs_tmp = true
+
+[caps]
+drop_all = true
+
+[limits]
+cpu_ms = 300000
+mem_mb = 512
+fsize_mb = 128
+nproc = 256
+nofile = 4096
+
+[timeouts]
+job_ms = 600000
+grace_ms = 5000
+idle_session_ms = 1200000

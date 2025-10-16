@@ -1,0 +1,4 @@
+[ring]
+dir = "/var/log/isolated-exec"
+per_job_mb = 16
+retention_minutes = 60
