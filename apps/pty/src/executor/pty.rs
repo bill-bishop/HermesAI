@@ -3,7 +3,7 @@ use crate::state::SessionHandle;
 use nix::pty::{openpty, Winsize};
 use nix::unistd::{fork, ForkResult, setsid, dup2, close, execvp, dup, read as nix_read, write as nix_write};
 use std::ffi::CString;
-use std::os::fd::{AsRawFd, IntoRawFd, FromRawFd};
+use std::os::fd::{AsRawFd, IntoRawFd, FromRawFd, BorrowedFd};
 use parking_lot::Mutex;
 use std::sync::Arc;
 use tokio::io::unix::AsyncFd;
@@ -37,16 +37,22 @@ pub fn spawn_pty_shell(shell:&str,cols:u16,rows:u16)->anyhow::Result<SessionHand
                 loop{
                     match reader_clone.readable().await{
                         Ok(mut guard)=>{
-                            let res=guard.try_io(|inner|{
-                                let fd=inner.get_ref().as_raw_fd();
-                                match nix_read(fd,&mut buf){
-                                    Ok(n)=>Ok(n),
-                                    Err(e)=>Err(std::io::Error::from_raw_os_error(e as i32)),
+                            let res = guard.try_io(|inner| {
+                                // nix_read expects RawFd (i32), not AsFd
+                                let fd = inner.get_ref().as_raw_fd();
+                                match nix_read(fd, &mut buf) {
+                                    Ok(n) => Ok(n),
+                                    Err(e) => Err(std::io::Error::from_raw_os_error(e as i32)),
                                 }
                             });
                             match res{
                                 Ok(Ok(0))=>break,
-                                Ok(Ok(n))=>{let s=String::from_utf8_lossy(&buf[..n]).to_string();let mut seq=seqr.lock();*seq+=1;let _=txr.send(StreamFrame{t:"stdout".into(),seq:*seq,d:s});}
+                                Ok(Ok(n)) => {
+                                    let s = String::from_utf8_lossy(&buf[..n]).to_string();
+                                    let mut seq = seqr.lock();
+                                    *seq += 1;
+                                    let _ = txr.send(StreamFrame { t:"stdout".into(), seq:*seq, d:s });
+                                }
                                 Ok(Err(_))=>break,
                                 Err(_)=>continue,
                             }
@@ -66,15 +72,23 @@ pub async fn write_pty(h:&SessionHandle,data:&str)->anyhow::Result<()>{
     let bytes=data.as_bytes();
     let mut off=0usize;
     while off<bytes.len(){
-        let guard=writer.writable().await?;
-        let n=guard.try_io(|inner|{
-            let fd=inner.get_ref().as_raw_fd();
-            match nix_write(fd,&bytes[off..]){
-                Ok(n)=>Ok(n),
-                Err(e)=>Err(std::io::Error::from_raw_os_error(e as i32)),
+        // obtain a *mutable* readiness guard; try the write inside `try_io`
+        let mut guard = writer.writable().await?;
+        let res = guard.try_io(|inner| {
+            // nix_write requires something implementing AsFd -> use BorrowedFd
+            let raw = inner.get_ref().as_raw_fd();
+            let fd = unsafe { BorrowedFd::borrow_raw(raw) };
+            match nix_write(fd, &bytes[off..]) {
+                Ok(n) => Ok(n),
+                Err(e) => Err(std::io::Error::from_raw_os_error(e as i32)),
             }
-        })??;
-        off+=n;
+        });
+        match res {
+            Ok(Ok(0)) => break,                 // wrote nothing -> done
+            Ok(Ok(n)) => { off += n; }          // progress
+            Ok(Err(e)) => return Err(e.into()), // real I/O error
+            Err(_would_block) => continue,      // spurious readiness -> retry
+        }
     }
     Ok(())
 }

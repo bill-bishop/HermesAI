@@ -1,5 +1,4 @@
 use serde::Deserialize;
-use std::fs;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Config { pub namespaces: Namespaces, pub limits: Limits, pub timeouts: Timeouts }
