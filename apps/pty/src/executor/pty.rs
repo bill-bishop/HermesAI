@@ -17,7 +17,18 @@ pub fn spawn_pty_shell(shell:&str,cols:u16,rows:u16)->anyhow::Result<SessionHand
             unsafe{libc::ioctl(pty.slave.as_raw_fd(),libc::TIOCSCTTY,0)};
             dup2(pty.slave.as_raw_fd(),0)?;dup2(pty.slave.as_raw_fd(),1)?;dup2(pty.slave.as_raw_fd(),2)?;
             let _=close(pty.master.as_raw_fd());let _=close(pty.slave.as_raw_fd());
-            let sh=CString::new(shell).unwrap();let args=&[sh.clone()];execvp(&sh,args).expect("exec failed");
+            // minimal env for real shells
+            std::env::set_var("TERM", "xterm-256color");
+            if std::env::var_os("PATH").is_none() {
+                std::env::set_var("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin");
+            }
+            // prefer interactive login shell args: "-li"
+            // execvp(argv[0], argv) — pass program + args
+            let prog = CString::new(shell).unwrap();
+            let arg0 = prog.clone();
+            let li   = CString::new("-li").unwrap();
+            let args = &[arg0, li];
+            execvp(&prog, args).expect("exec failed");
             unsafe{libc::_exit(127);}
         }
         ForkResult::Parent{child}=>{
@@ -37,10 +48,10 @@ pub fn spawn_pty_shell(shell:&str,cols:u16,rows:u16)->anyhow::Result<SessionHand
                 loop{
                     match reader_clone.readable().await{
                         Ok(mut guard)=>{
-                            let res = guard.try_io(|inner| {
+                            let res = guard.try_io(|inner|{
                                 // nix_read expects RawFd (i32), not AsFd
                                 let fd = inner.get_ref().as_raw_fd();
-                                match nix_read(fd, &mut buf) {
+                                match nix_read(fd, &mut buf){
                                     Ok(n) => Ok(n),
                                     Err(e) => Err(std::io::Error::from_raw_os_error(e as i32)),
                                 }
@@ -72,18 +83,17 @@ pub async fn write_pty(h:&SessionHandle,data:&str)->anyhow::Result<()>{
     let bytes=data.as_bytes();
     let mut off=0usize;
     while off<bytes.len(){
-        // obtain a *mutable* readiness guard; try the write inside `try_io`
         let mut guard = writer.writable().await?;
-        let res = guard.try_io(|inner| {
-            // nix_write requires something implementing AsFd -> use BorrowedFd
+        let res = guard.try_io(|inner|{
+            // use BorrowedFd to satisfy AsFd bound on nix_write
             let raw = inner.get_ref().as_raw_fd();
-            let fd = unsafe { BorrowedFd::borrow_raw(raw) };
-            match nix_write(fd, &bytes[off..]) {
-                Ok(n) => Ok(n),
-                Err(e) => Err(std::io::Error::from_raw_os_error(e as i32)),
+            let fd  = unsafe { BorrowedFd::borrow_raw(raw) };
+            match nix_write(fd, &bytes[off..]){
+                Ok(n)=>Ok(n),
+                Err(e)=>Err(std::io::Error::from_raw_os_error(e as i32)),
             }
         });
-        match res {
+        match res{
             Ok(Ok(0)) => break,                 // wrote nothing -> done
             Ok(Ok(n)) => { off += n; }          // progress
             Ok(Err(e)) => return Err(e.into()), // real I/O error
