@@ -1,26 +1,15 @@
-# ---------- build (musl static) ----------
-FROM rust:1.81-alpine AS build
-RUN apk add --no-cache musl-dev build-base
+FROM rust:1.81 as build
 WORKDIR /app
-
-# cache deps
 COPY Cargo.toml ./
-RUN mkdir -p src && echo 'fn main(){}' > src/main.rs && cargo build --release || true
-
-# actual sources
+RUN mkdir src && echo 'fn main(){}' > src/main.rs
 COPY src ./src
-COPY config ./config
+RUN cargo build --release
 
-# build static binary
-RUN rustup target add x86_64-unknown-linux-musl
-ENV RUSTFLAGS="-C target-feature=+crt-static"
-RUN cargo build --release --target x86_64-unknown-linux-musl
-
-# ---------- runtime (no shell) ----------
-FROM gcr.io/distroless/static-debian12
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates bash coreutils && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY --from=build /app/target/x86_64-unknown-linux-musl/release/isolated-exec /isolated-exec
-COPY --from=build /app/config /app/config
+COPY --from=build /app/target/release/isolated-exec /usr/local/bin/isolated-exec
+COPY config /app/config
+ENV PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 EXPOSE 8080
-USER 65532:65532
-ENTRYPOINT ["/isolated-exec"]
+ENTRYPOINT ["/usr/local/bin/isolated-exec"]

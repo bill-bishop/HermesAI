@@ -6,7 +6,6 @@ mod state;
 mod config;
 mod error;
 
-use axum::Router;
 use tracing_subscriber::EnvFilter;
 use state::AppState;
 use tokio::net::TcpListener;
@@ -19,7 +18,6 @@ async fn main() -> anyhow::Result<()> {
 
     let state = AppState::new();
     let app = routes::app_router(state);
-
     let addr = std::net::SocketAddr::from(([0,0,0,0], 8080));
     let listener = TcpListener::bind(addr).await?;
     tracing::info!("listening on http://{}", addr);
