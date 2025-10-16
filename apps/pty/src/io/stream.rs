@@ -1,5 +1,4 @@
 use axum::response::IntoResponse;
-use futures_core::stream::Stream;
 use futures_util::stream::{self, StreamExt};
 use tokio::sync::broadcast;
 
@@ -8,9 +7,10 @@ use serde_json::json;
 
 pub fn ndjson_stream_with_backlog(
     mut backlog: Vec<StreamFrame>,
-    mut rx: broadcast::Receiver<StreamFrame>,
+    rx: broadcast::Receiver<StreamFrame>,
     from: u64,
 ) -> impl IntoResponse {
+    let mut backlog = backlog;
     backlog.sort_by_key(|f| f.seq);
     let past = backlog
         .into_iter()

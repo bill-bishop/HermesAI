@@ -21,7 +21,6 @@ pub async fn spawn_noninteractive(cmd: Vec<String>, cwd: Option<String>) -> JobH
     let exit_code = Arc::new(Mutex::new(None));
     let backlog = Arc::new(Mutex::new(VecDeque::with_capacity(1024)));
 
-    // helper to push & broadcast
     let push = |frame: StreamFrame, tx: &tokio::sync::broadcast::Sender<StreamFrame>, backlog: &Arc<Mutex<VecDeque<StreamFrame>>>| {
         let mut b = backlog.lock();
         if b.len() == b.capacity() { b.pop_front(); }
@@ -35,8 +34,7 @@ pub async fn spawn_noninteractive(cmd: Vec<String>, cwd: Option<String>) -> JobH
             let mut reader = BufReader::new(out).lines();
             while let Ok(Some(line)) = reader.next_line().await {
                 let mut s = seqc.lock(); *s += 1;
-                let frame = StreamFrame{ t:"stdout".into(), seq:*s, d: format!("{line}
-") };
+                let frame = StreamFrame{ t:"stdout".into(), seq:*s, d: format!("{line}\n") };
                 push(frame, &txc, &backc);
             }
         });
@@ -47,8 +45,7 @@ pub async fn spawn_noninteractive(cmd: Vec<String>, cwd: Option<String>) -> JobH
             let mut reader = BufReader::new(err).lines();
             while let Ok(Some(line)) = reader.next_line().await {
                 let mut s = seqc.lock(); *s += 1;
-                let frame = StreamFrame{ t:"stderr".into(), seq:*s, d: format!("{line}
-") };
+                let frame = StreamFrame{ t:"stderr".into(), seq:*s, d: format!("{line}\n") };
                 push(frame, &txc, &backc);
             }
         });

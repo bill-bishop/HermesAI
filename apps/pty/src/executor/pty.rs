@@ -8,6 +8,7 @@ use std::sync::Arc;
 use tracing::debug;
 
 use nix::fcntl::{fcntl, FcntlArg, OFlag};
+use nix::libc;
 use nix::pty::{forkpty, ForkptyResult, Winsize};
 use nix::unistd::{dup, execvp, read as nix_read, write as nix_write};
 use std::ffi::CString;
@@ -33,6 +34,8 @@ pub fn spawn_pty_shell(profile: Option<String>, cols: u16, rows: u16) -> anyhow:
                 let _ = execvp(&prog, &argv);
                 libc::_exit(127);
             }
+            #[allow(unreachable_code)]
+            unreachable!("execvp should not return");
         }
         ForkptyResult::Parent { child, master } => {
             let mfd = master.as_raw_fd();
@@ -131,7 +134,7 @@ pub async fn write_pty(h: &SessionHandle, data: &str) -> anyhow::Result<()> {
         let res = guard.try_io(|inner| {
             let raw = inner.get_ref().as_raw_fd();
             let fd = unsafe { BorrowedFd::borrow_raw(raw) };
-            match nix_write(fd, &bytes[off..]) {
+            match nix::unistd::write(fd, &bytes[off..]) {
                 Ok(n) => Ok(n),
                 Err(e) => Err(std::io::Error::from_raw_os_error(e as i32)),
             }

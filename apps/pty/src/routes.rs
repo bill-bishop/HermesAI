@@ -134,11 +134,13 @@ async fn status_job(
     State(state): State<AppState>,
     Path(id): Path<String>
 ) -> Result<Json<StatusResponse>, (StatusCode, String)> {
-    let jobs = state.jobs.read().await;
-    let Some(h) = jobs.get(&id) else { return Err((StatusCode::NOT_FOUND, "job not found".into())); };
-    Ok(Json(StatusResponse {
-        state: if h.exit_code.lock().is_some() { "exited".into() } else { "running".into() },
-        exit_code: *h.exit_code.lock(),
-        seq_latest: *h.latest_seq.lock(),
-    }))
+    let (state_str, exit_code, seq_latest) = {
+        let jobs = state.jobs.read().await;
+        let Some(h) = jobs.get(&id) else { return Err((StatusCode::NOT_FOUND, "job not found".into())); };
+        let exit_code = *h.exit_code.lock();
+        let seq_latest = *h.latest_seq.lock();
+        let state_str = if exit_code.is_some() { "exited".into() } else { "running".into() };
+        (state_str, exit_code, seq_latest)
+    };
+    Ok(Json(StatusResponse { state: state_str, exit_code, seq_latest }))
 }

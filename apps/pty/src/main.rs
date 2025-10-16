@@ -1,26 +1,28 @@
-mod routes;
+use axum::{routing::get, Router};
+use tracing_subscriber::{fmt, EnvFilter};
+
 mod models;
+mod state;
 mod executor;
 mod io;
-mod state;
 mod config;
-mod error;
-
-use tracing_subscriber::EnvFilter;
-use state::AppState;
-use tokio::net::TcpListener;
+mod routes;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt().with_env_filter(EnvFilter::from_default_env()).init();
-    let cfg = config::Config::load()?;
-    tracing::info!(?cfg, "config loaded");
+    // Initialize logging
+    fmt().with_env_filter(EnvFilter::from_default_env()).init();
 
-    let state = AppState::new();
+    // Build state and router
+    let state = state::AppState::new();
     let app = routes::app_router(state);
-    let addr = std::net::SocketAddr::from(([0,0,0,0], 8080));
-    let listener = TcpListener::bind(addr).await?;
-    tracing::info!("listening on http://{}", addr);
+
+    // Bind listener (use same port as before)
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await?;
+    tracing::info!("listening on http://{}", listener.local_addr()?);
+
+    // Serve via axum::serve (Axum 0.7+)
     axum::serve(listener, app).await?;
+
     Ok(())
 }
