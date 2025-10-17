@@ -62,7 +62,7 @@ SID=$(curl -s -X POST localhost:8080/sessions \
   | jq -r .session_id)
 
 # Start stream in background
-curl -N "http://localhost:8080/sessions/$SID/stream?from=0" &
+curl -Ns "http://localhost:8080/sessions/$SID/stream?from=0"   | jq -r 'select(.t=="stdout" or .t=="stderr") | .d'
 
 # Send a simple echo command with CR (important!)
 curl -s -X POST "http://localhost:8080/sessions/$SID/write" \
@@ -84,10 +84,10 @@ curl -s -X POST "http://localhost:8080/sessions/$SID/write" \
 ```bash
 J=$(curl -s -X POST http://localhost:8080/exec \
   -H 'content-type: application/json' \
-  -d '{"cmd":["/bin/bash","-lc","echo start; for i in 1 2 3; do echo tick:$i; sleep 1; done; echo done"]}' \
+  -d '{"cmd":["echo start; for i in 1 2 3; do echo tick:$i; sleep 1; done; echo done"]}' \
   | jq -r .job_id)
 
-curl -N "http://localhost:8080/stream/$J?from=0"
+curl -Ns "http://localhost:8080/stream/$J?from=0" | jq -r 'select(.t=="stdout" or .t=="stderr") | .d'
 ```
 
 ✅ **Expected behavior**
@@ -101,4 +101,66 @@ curl -N "http://localhost:8080/stream/$J?from=0"
 
 ---
 
-Would you like me to add a section that also shows how to gracefully close or resize the PTY (using `/close` and `/resize`)? Those endpoints are wired up and make a nice completeness touch.
+## 5️⃣ Resize the PTY (window change)
+
+> Works for interactive shells that honor TIOCSWINSZ (bash, sh, zsh, busybox).
+
+```bash
+# assuming $SID is set
+curl -s -X POST "http://localhost:8080/sessions/$SID/resize" \
+  -H 'content-type: application/json' \
+  -d '{"cols":140,"rows":40}'
+```
+
+**Optional sanity check (bash):**
+
+```bash
+# Terminal B: ask bash to report the new rows/cols
+curl -s -X POST "http://localhost:8080/sessions/$SID/write" \
+  -H 'content-type: application/json' \
+  -d '{"data":"stty size\r"}'
+```
+
+You should see a line like `40 140` appear in the stream (Terminal A).
+
+---
+
+## 6️⃣ Close the PTY (graceful EOF)
+
+```bash
+# assuming $SID is set
+curl -s -X POST "http://localhost:8080/sessions/$SID/close"
+```
+
+**Expected in stream (Terminal A):**
+
+```
+{"t":"event","seq":...,"d":"exit:None"}
+```
+
+> Note: `close` writes an EOT (^D). The shell should exit; the reader task emits the `exit:*` event and closes the stream.
+
+---
+
+## 7️⃣ Check Job/Session Status & Resume Stream
+
+### Job status (non-PTY runs)
+
+```bash
+# assuming $J is a job_id from /exec response
+curl -s "http://localhost:8080/status/$J" | jq
+# -> { "state":"running"|"exited", "exit_code":..., "seq_latest": N }
+```
+
+### Resume a stream from a known sequence
+
+If you’ve already received frames up to `seq = N`, you can resume from there:
+
+```bash
+curl -N "http://localhost:8080/sessions/$SID/stream?from=N"
+# or for non-PTY jobs:
+curl -N "http://localhost:8080/stream/$J?from=N"
+```
+
+This replays any backlog frames with `seq > N` and then continues live.
+

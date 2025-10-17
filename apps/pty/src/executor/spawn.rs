@@ -9,8 +9,17 @@ use crate::models::StreamFrame;
 use crate::state::JobHandle;
 
 pub async fn spawn_noninteractive(cmd: Vec<String>, cwd: Option<String>) -> JobHandle {
-    let mut c = Command::new(&cmd[0]);
-    if cmd.len() > 1 { c.args(&cmd[1..]); }
+    // Always execute via bash -lc so shell features work.
+    // Accept either a single string or an array of tokens; join arrays with spaces.
+    let joined = if cmd.len() == 1 {
+        cmd[0].clone()
+    } else {
+        cmd.join(" ")
+    };
+
+    let mut c = Command::new("/bin/bash");
+    c.arg("-lc").arg(joined);
+
     if let Some(dir) = cwd { c.current_dir(dir); }
     c.stdout(std::process::Stdio::piped());
     c.stderr(std::process::Stdio::piped());
