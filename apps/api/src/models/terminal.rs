@@ -1,24 +1,16 @@
+use axum_macros::FromRequest;
+use axum::Json;
+use serde::{Deserialize, Serialize};
 
-use serde::{Serialize, Deserialize};
-use super::common::StreamFrame;
-
-#[derive(Deserialize)]
-pub struct PostTerminalRequest { pub cmd: String }
-
-#[derive(Serialize)]
-pub struct PostTerminalResponse {
-    pub created: bool,
-    pub running: bool,
-    pub frames: Vec<StreamFrame>,
-    pub next_from: u64,
-    pub advice: Option<String>,
+#[derive(FromRequest, Deserialize)]
+pub struct TerminalBody {
+    #[from_request(via(Json))]
+    pub cmd: String,
 }
 
 #[derive(Serialize)]
-pub struct GetTerminalResponse {
+pub struct TerminalResponse {
     pub running: bool,
-    pub frames: Vec<StreamFrame>,
-    pub tail: Option<Vec<StreamFrame>>,
-    pub message: Option<String>,
-    pub next_from: u64,
+    pub frames: Vec<String>,
+    pub message: String,
 }
