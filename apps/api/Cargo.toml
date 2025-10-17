@@ -1,0 +1,25 @@
+
+[package]
+name = "agent-api"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = { version = "0.7", features = ["macros", "json"] }
+hyper = { version = "1", features = ["server", "http1"] }
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+bytes = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+thiserror = "1"
+dashmap = "5"
+reqwest = { version = "0.12", features = ["json", "stream", "gzip", "brotli", "deflate", "rustls-tls"] }
+futures-util = "0.3"
+http = "1"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["trace", "cors", "request-id", "util"] }
+anyhow = "1"
+async-trait = "0.1"
+uuid = { version = "1", features = ["v4"] }
