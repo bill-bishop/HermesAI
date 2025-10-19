@@ -1,6 +1,7 @@
 services:
   database:
-    build: ./apps/database
+    image: whb4118/hermesai-db:0.0.1
+#    build: ./apps/database
     container_name: hermesai-db
     expose:
       - "5432"
@@ -15,7 +16,8 @@ services:
       - hermesnet
 
   agent-api:
-    build: ./apps/api
+    image: whb4118/hermesai-api:0.0.1
+    #    build: ./apps/pty
     container_name: hermesai-api
     volumes:
       - ${TOKEN_MAP_PATH:-./apps/api/tokens}:/4d24721f7fe5084b6f4e0c93eca86954:ro
@@ -27,7 +29,8 @@ services:
       - RUST_LOG=debug
 
   grace-pty:
-    build: ./apps/pty
+    image: whb4118/hermesai-pty:0.0.1
+    #    build: ./apps/pty
     container_name: hermesai-grace-pty
     expose:
       - "8080"
@@ -36,7 +39,8 @@ services:
 
 
   will-pty:
-    build: ./apps/pty
+    image: whb4118/hermesai-pty:0.0.1
+#    build: ./apps/pty
     container_name: hermesai-will-pty
     expose:
       - "8080"
@@ -45,7 +49,8 @@ services:
 
 
   backend:
-    build: ./apps/execution-sandbox/sandbox_server
+    image: whb4118/hermesai-flask:0.0.1
+#    build: ./apps/execution-sandbox/sandbox_server
     container_name: hermesai-backend
     depends_on:
       - database
@@ -54,14 +59,13 @@ services:
       PYTHONUNBUFFERED: 1
     expose:
       - "8080"
-    volumes:
-      - ./apps/execution-sandbox:/app
     networks:
       - hermesnet
     command: ["python", "-m", "sandbox_server.app"]
 
   frontend:
-    build: ./apps/dropcode-client
+    image: whb4118/hermesai-client:0.0.1
+#    build: ./apps/dropcode-client
     container_name: hermesai-frontend
     depends_on:
       - backend
@@ -74,14 +78,14 @@ services:
       - hermesnet
 
   router:
-    build: ./apps/execution-sandbox/terminal
+    image: whb4118/hermesai-router:0.0.2
+#    build: ./apps/execution-sandbox/terminal
     container_name: hermesai-router
     depends_on:
       - frontend
       - backend
       - agent-api
-      - grace-pty
-      - will-pty
+      - certbot
     ports:
       - "80:80"
       - "443:443"
@@ -100,34 +104,18 @@ services:
       retries: 5
     restart: always
 
+  # self-signed cert
   certbot:
-    image: certbot/certbot
-    container_name: hermesai-certbot
-    depends_on:
-      - router
-    volumes:
-      - ./certbot/www:/var/www/certbot
-      - ./certbot/conf:/etc/letsencrypt
+    image: alpine:latest
+    container_name: hermesai-selfsigned
     entrypoint: >
-      sh -c "certbot certonly --staging --standalone
-      --register-unsafely-without-email --agree-tos
-      -d hermesai.dev &&
-      mkdir -p /var/www/certbot/live/hermesai.dev &&
-      cp -r /etc/letsencrypt/live/hermesai.dev/* /var/www/certbot/live/hermesai.dev/"
+      sh -c "apk add --no-cache openssl &&
+      mkdir -p /etc/letsencrypt/live/hermesai.dev &&
+      openssl req -x509 -nodes -days 365 -subj '/CN=hermesai.dev' -newkey rsa:2048 -keyout /etc/letsencrypt/live/hermesai.dev/privkey.pem -out /etc/letsencrypt/live/hermesai.dev/fullchain.pem"
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
     networks:
       - hermesnet
-
-#  selfsigned:
-#    image: alpine:latest
-#    container_name: hermesai-selfsigned
-#    command: >
-#      sh -c "apk add --no-cache openssl &&
-#      mkdir -p /etc/letsencrypt/live/hermesai.dev &&
-#      openssl req -x509 -nodes -days 365 -subj '/CN=hermesai.dev' -newkey rsa:2048 -keyout /etc/letsencrypt/live/hermesai.dev/privkey.pem -out /etc/letsencrypt/live/hermesai.dev/fullchain.pem"
-#    volumes:
-#      - ./certbot/conf:/etc/letsencrypt
-#    networks:
-#      - hermesnet
 
 
 volumes:
