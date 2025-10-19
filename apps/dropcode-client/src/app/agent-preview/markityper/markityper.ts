@@ -31,14 +31,9 @@ export class MarkityperComponent implements OnInit, OnDestroy {
   /** Signal that holds the progressively typed markdown */
   readonly typed = signal('');
 
-  debugTyped: string[] = [];
-
   private cancelled = false;
 
   async ngOnInit() {
-    const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
-    const msPerLetter = 1000 / Math.max(1, this.lps);
-
     let buffer = '';
 
     try {
@@ -63,11 +58,6 @@ export class MarkityperComponent implements OnInit, OnDestroy {
 
         buffer += value;
         this.typed.set(buffer);
-
-        this.debugTyped.push(value);
-
-        // optional pacing delay (per grapheme)
-        await delay(msPerLetter * value.length);
       }
       this.onComplete.emit(true);
     } catch {
