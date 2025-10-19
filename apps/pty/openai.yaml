@@ -1,0 +1,82 @@
+openapi: 3.1.0
+info:
+  title: HermesAI Agent Terminal API
+  version: 1.0.0
+  description: >
+    Lightweight wrapper API for agent interaction with user-specific PTY containers.
+    Provides command execution and terminal tail retrieval.  
+    Authenticated via Bearer token that resolves to a workspace container (e.g. hermesai-grace-pty).
+
+servers:
+  - url: https://hermesai.dev/agent
+
+paths:
+  /terminal:
+    post:
+      summary: Execute command on user's active PTY
+      description: >
+        Sends a command string to the PTY container resolved by the Bearer token.
+        The PTY executes via `/bin/bash -lc`, streaming results into a backlog.
+        Returns 200 OK immediately after dispatching the command.
+      operationId: postTerminal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cmd:
+                  type: string
+                  example: "echo start; sleep 1; echo done"
+              required: [cmd]
+      responses:
+        "200":
+          description: Command accepted
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "executed\n"
+        "401":
+          description: Unauthorized
+        "422":
+          description: Invalid JSON or execution failure
+        "500":
+          description: Internal error
+
+    get:
+      summary: Read terminal backlog tail
+      description: >
+        Returns the last 30 lines of PTY output for the active job associated with the token.  
+        Filters to `stdout` and `stderr`, strips ANSI codes, and appends  
+        `(... process still running ...)` if job is active.
+      operationId: getTerminal
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Latest terminal output
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: |
+                  start
+                  tick:1
+                  tick:2
+                  tick:3
+                  done
+        "401":
+          description: Unauthorized
+        "404":
+          description: No active session found
+        "500":
+          description: Internal error
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
