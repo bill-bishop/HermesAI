@@ -3,6 +3,7 @@ use futures_util::StreamExt;
 use regex::Regex;
 use reqwest::{Client, Response};
 use std::sync::Arc;
+use serde_json::Value;
 use tokio::sync::RwLock;
 use tracing::{debug, info};
 use crate::models::terminal::ExecResponse;
@@ -108,13 +109,32 @@ impl NodeClient {
         Ok(())
     }
 
-    /// Tail of backlog (for /terminal)
     pub async fn get_terminal_tail(&self, token: &str) -> Result<String> {
         let cache = self.cache.read().await;
         if let Some(state) = cache.get(token) {
-            let mut lines: Vec<&str> = state.backlog.lines().rev().take(30).collect();
-            lines.reverse();
-            let mut tail = lines.join("\n");
+            // Normalize backlog into clean lines
+            let mut lines = Vec::new();
+            let ansi = Regex::new(r"\x1B\[[0-9;]*[A-Za-z]").unwrap();
+
+            for raw in state.backlog.lines() {
+                if let Ok(v) = serde_json::from_str::<Value>(raw) {
+                    if let Some(t) = v.get("t").and_then(|x| x.as_str()) {
+                        if t == "stdout" || t == "stderr" {
+                            if let Some(d) = v.get("d").and_then(|x| x.as_str()) {
+                                let clean = ansi.replace_all(d, "").to_string();
+                                lines.push(clean);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Tail last 30 lines
+            let tail_n = 30;
+            let len = lines.len();
+            let start = len.saturating_sub(tail_n);
+            let mut tail = lines[start..].join("");
+
             if state.running {
                 tail.push_str("\n(... process still running ...)\n");
             }
