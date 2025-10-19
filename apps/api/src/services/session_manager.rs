@@ -1,38 +1,52 @@
-use anyhow::Result;
-use crate::services::node_client::NodeClient;
-use tracing::info;
 use std::collections::HashMap;
-use tokio::sync::RwLock;
-use std::sync::Arc;
+use std::fs;
+use anyhow::Result;
+use tracing::info;
 
+use crate::services::node_client::NodeClient;
+
+// UPDATE
 #[derive(Clone)]
 pub struct SessionManager {
-    pub nodes: Arc<RwLock<HashMap<String, String>>>,
     pub client: NodeClient,
+    pub token_map: std::collections::HashMap<String, String>, // token -> node_url
 }
 
 impl SessionManager {
     pub fn new() -> Self {
-        let mut map = HashMap::new();
-        map.insert("token-will".into(), "http://pty-will:8080".into());
-        map.insert("token-grace".into(), "http://pty-grace:8080".into());
-        Self { nodes: Arc::new(RwLock::new(map)), client: NodeClient::new() }
+        // Mounted volume
+        let path = "/4d24721f7fe5084b6f4e0c93eca86954/active.json";
+
+        let token_map: HashMap<String, String> = fs::read_to_string(path)
+            .ok()
+            .and_then(|txt| serde_json::from_str(&txt).ok())
+            .unwrap_or_else(|| {
+                eprintln!("⚠️  Warning: could not read {}", path);
+                let m = HashMap::new();
+                m
+            });
+
+        let client = NodeClient::new();
+        Self { client, token_map }
     }
 
-    async fn resolve(&self, token: &str) -> Result<String> {
-        let map = self.nodes.read().await;
-        map.get(token).cloned().ok_or_else(|| anyhow::anyhow!("invalid token"))
+    pub fn resolve_node(&self, token: &str) -> Option<String> {
+        self.token_map.get(token).cloned()
     }
 
-    pub async fn write_and_read(&self, token: &str, cmd: String) -> Result<Vec<String>> {
-        let url = self.resolve(token).await?;
-        info!("Executing '{}' on {}", cmd, url);
-        self.client.post_cmd(&url, &cmd).await
+    pub async fn execute(&self, token: &str, cmd: &str) -> Result<String> {
+        if let Some(node) = self.resolve_node(token) {
+            info!("Executing '{}' on {}", cmd, node);
+            let job_id = self.client.post_exec(&node, token, cmd).await?;
+            info!("Created job {}", job_id);
+            Ok(job_id)
+        } else {
+            anyhow::bail!("unknown token {token}");
+        }
     }
 
-    pub async fn read_latest(&self, token: &str) -> Result<Vec<String>> {
-        let url = self.resolve(token).await?;
-        info!("Reading stream from {}", url);
-        self.client.read_stream(&url).await
+    pub async fn get_terminal_tail(&self, token: &str) -> Result<String> {
+        self.client.get_terminal_tail(token).await
     }
 }
+// UPDATE

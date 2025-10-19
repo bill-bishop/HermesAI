@@ -16,13 +16,21 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let manager = SessionManager::new();
+    
+    println!("Starting Agent API...");
 
     let app = Router::new()
         .route("/terminal", get(get_terminal).post(post_terminal)) // `Result<(), anyhow::Error>` is not a future [E0277]
         .with_state(manager);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8081").await?;
-    tracing::info!("🚀 agent-api running on http://0.0.0.0:8081");
-    axum::serve(listener, app).await?;
+    if let Err(e) = axum::serve(listener, app).await {
+        eprintln!("❌ axum serve error: {e}");
+        return Err(Box::new(e).into());
+    }
+
+    println!("🚀 agent-api running on http://0.0.0.0:8081");
+    
+    
     Ok(())
 }

@@ -1,16 +1,15 @@
-use axum_macros::FromRequest;
-use axum::Json;
 use serde::{Deserialize, Serialize};
 
-#[derive(FromRequest, Deserialize)]
+// we're using axum's macros 
+#[derive(Deserialize, Debug)]
 pub struct TerminalBody {
-    #[from_request(via(Json))]
     pub cmd: String,
 }
 
-#[derive(Serialize)]
-pub struct TerminalResponse {
-    pub running: bool,
-    pub frames: Vec<String>,
-    pub message: String,
+#[derive(serde::Deserialize, Debug)]
+pub struct ExecResponse {
+    pub job_id: String,
+    pub stream_url: Option<String>,
+    pub status_url: Option<String>,
+    pub cancel_url: Option<String>,
 }
