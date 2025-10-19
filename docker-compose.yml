@@ -14,6 +14,36 @@ services:
     networks:
       - hermesnet
 
+  agent-api:
+    build: ./apps/api
+    container_name: hermesai-api
+    volumes:
+      - ${TOKEN_MAP_PATH:-./apps/api/tokens}:/4d24721f7fe5084b6f4e0c93eca86954:ro
+    expose:
+      - "8081"
+    networks:
+      - hermesnet
+    environment:
+      - RUST_LOG=debug
+
+  grace-pty:
+    build: ./apps/pty
+    container_name: hermesai-grace-pty
+    expose:
+      - "8080"
+    networks:
+      - hermesnet
+
+
+  will-pty:
+    build: ./apps/pty
+    container_name: hermesai-will-pty
+    expose:
+      - "8080"
+    networks:
+      - hermesnet
+
+
   backend:
     build: ./apps/execution-sandbox/sandbox_server
     container_name: hermesai-backend
@@ -49,6 +79,9 @@ services:
     depends_on:
       - frontend
       - backend
+      - agent-api
+      - grace-pty
+      - will-pty
     ports:
       - "80:80"
       - "443:443"
@@ -76,11 +109,25 @@ services:
       - ./certbot/www:/var/www/certbot
       - ./certbot/conf:/etc/letsencrypt
     entrypoint: >
-      sh -c "certbot certonly --webroot --webroot-path=/var/www/certbot
-      --email your@email.com --agree-tos --no-eff-email
-      -d hermesai.dev"
+      sh -c "certbot certonly --staging --standalone
+      --register-unsafely-without-email --agree-tos
+      -d hermesai.dev &&
+      mkdir -p /var/www/certbot/live/hermesai.dev &&
+      cp -r /etc/letsencrypt/live/hermesai.dev/* /var/www/certbot/live/hermesai.dev/"
     networks:
       - hermesnet
+
+#  selfsigned:
+#    image: alpine:latest
+#    container_name: hermesai-selfsigned
+#    command: >
+#      sh -c "apk add --no-cache openssl &&
+#      mkdir -p /etc/letsencrypt/live/hermesai.dev &&
+#      openssl req -x509 -nodes -days 365 -subj '/CN=hermesai.dev' -newkey rsa:2048 -keyout /etc/letsencrypt/live/hermesai.dev/privkey.pem -out /etc/letsencrypt/live/hermesai.dev/fullchain.pem"
+#    volumes:
+#      - ./certbot/conf:/etc/letsencrypt
+#    networks:
+#      - hermesnet
 
 
 volumes:
