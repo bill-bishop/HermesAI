@@ -1,4 +1,4 @@
-name: Build Docker Image (No Push)
+name: Build All HermesAI Docker Images (No Push)
 
 on:
   push:
@@ -16,10 +16,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: false
-          tags: |
-            yourdockerhubuser/hermesai:latest
+      - name: Build all HermesAI images
+        run: |
+          docker build -t whb4118/hermesai-db:latest ./apps/database
+          docker build -t whb4118/hermesai-api:latest ./apps/api
+          docker build -t whb4118/hermesai-pty:latest ./apps/pty
+          docker build -t whb4118/hermesai-flask:latest ./apps/execution-sandbox/sandbox_server
+          docker build -t whb4118/hermesai-client:latest ./apps/dropcode-client
+          docker build -t whb4118/hermesai-router:latest ./apps/execution-sandbox/terminal
