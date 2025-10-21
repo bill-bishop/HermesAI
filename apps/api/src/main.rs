@@ -6,6 +6,7 @@ mod state;
 
 use axum::{Router, routing::{get}};
 use crate::routes::terminal::{get_terminal, post_terminal};
+use crate::routes::file::{get_file, post_file};
 use crate::state::SessionManager;
 use tracing_subscriber::EnvFilter;
 
@@ -21,6 +22,7 @@ async fn main() -> anyhow::Result<()> {
 
     let app = Router::new()
         .route("/terminal", get(get_terminal).post(post_terminal)) // `Result<(), anyhow::Error>` is not a future [E0277]
+        .route("/sandbox/{*path}", get(get_file).post(post_file))
         .with_state(manager);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8081").await?;

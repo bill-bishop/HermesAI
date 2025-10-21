@@ -46,7 +46,31 @@ impl SessionManager {
     }
 
     pub async fn get_terminal_tail(&self, token: &str) -> Result<String> {
-        self.client.get_terminal_tail(token).await
+        if let Some(node) = self.resolve_node(token) {
+            info!("Fetching terminal tail on {}", node);
+            let output = self.client.get_terminal_tail_live(&node, token).await?;
+            info!("Created job {}", output);
+            Ok(output)
+        } else {
+            anyhow::bail!("unknown token {token}");
+        }
     }
+
+    pub async fn get_file(&self, token: &str, path: &str) -> Result<String> {
+        if let Some(node) = self.resolve_node(token) {
+            self.client.get_file(&node, path).await
+        } else {
+            anyhow::bail!("unknown token {token}");
+        }
+    }
+
+    pub async fn write_file(&self, token: &str, path: &str, content: &str) -> Result<String> {
+        if let Some(node) = self.resolve_node(token) {
+            self.client.write_file(&node, path, content).await
+        } else {
+            anyhow::bail!("unknown token {token}");
+        }
+    }
+
 }
 // UPDATE

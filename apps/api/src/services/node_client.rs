@@ -3,6 +3,7 @@ use futures_util::StreamExt;
 use regex::Regex;
 use reqwest::{Client, Response};
 use std::sync::Arc;
+use serde::Deserialize;
 use serde_json::Value;
 use tokio::sync::RwLock;
 use tracing::{debug, info};
@@ -34,7 +35,7 @@ impl NodeClient {
             cache: Arc::new(RwLock::new(std::collections::HashMap::new())),
         }
     }
-    
+
     /// Send command to PTY and wait up to ~10s for output
     pub async fn post_exec(&self, node_url: &str, token: &str, cmd: &str) -> Result<String> {
         use serde::Deserialize;
@@ -171,39 +172,120 @@ impl NodeClient {
         Ok(summary)
     }
 
+    /// Live tail: fetch last ~50 lines from the PTY node for the last job.
+    pub async fn get_terminal_tail_live(&self, node_url: &str, token: &str) -> Result<String> {
+        use serde::Deserialize;
+        use tokio::time::{timeout, Duration};
+        use futures_util::StreamExt;
 
-    pub async fn get_terminal_tail(&self, token: &str) -> Result<String> {
-        let cache = self.cache.read().await;
-        if let Some(state) = cache.get(token) {
-            // Normalize backlog into clean lines
-            let mut lines = Vec::new();
-            let ansi = Regex::new(r"\x1B\[[0-9;]*[A-Za-z]").unwrap();
+        #[derive(Deserialize)]
+        struct Frame { t: Option<String>, d: Option<String> }
+        #[derive(Deserialize)]
+        struct Status { state: String, exit_code: Option<i32>, seq_latest: u64 }
 
-            for raw in state.backlog.lines() {
-                if let Ok(v) = serde_json::from_str::<Value>(raw) {
-                    if let Some(t) = v.get("t").and_then(|x| x.as_str()) {
-                        if t == "stdout" || t == "stderr" {
-                            if let Some(d) = v.get("d").and_then(|x| x.as_str()) {
-                                let clean = ansi.replace_all(d, "").to_string();
-                                lines.push(clean);
+        // ---- resolve job ----
+        let last_job_id = {
+            let cache = self.cache.read().await;
+            match cache.get(token).and_then(|s| s.last_job_id.clone()) {
+                Some(j) => j,
+                None => return Ok("(no active session)".into()),
+            }
+        };
+
+        // ---- query latest status ----
+        let status_url = format!("{}/status/{}", node_url.trim_end_matches('/'), last_job_id);
+        let status: Status = self.http.get(&status_url).send().await?
+            .error_for_status()?
+            .json().await?;
+
+        // ---- open stream near the end ----
+        let from = status.seq_latest.saturating_sub(800);
+        let stream_url = format!("{}/stream/{}?from={}", node_url.trim_end_matches('/'), last_job_id, from);
+        let resp = self.http.get(&stream_url).send().await?;
+        let mut stream = resp.bytes_stream();
+
+        // ---- collect up to 10s or until exit ----
+        let mut stdout_buf = String::new();
+        let mut stderr_buf = String::new();
+        let mut exit_str = String::from("still running...");
+
+        let _ = timeout(Duration::from_secs(10), async {
+            while let Some(chunk) = stream.next().await {
+                match chunk {
+                    Ok(bytes) => {
+                        for line in String::from_utf8_lossy(&bytes).lines() {
+                            if line.trim().is_empty() { continue; }
+
+                            if let Ok(frame) = serde_json::from_str::<Frame>(line) {
+                                match frame.t.as_deref() {
+                                    Some("stdout") => if let Some(d) = frame.d { stdout_buf.push_str(&d); },
+                                    Some("stderr") => if let Some(d) = frame.d { stderr_buf.push_str(&d); },
+                                    Some("event") => if let Some(d) = frame.d {
+                                        if d.starts_with("exit:") {
+                                            exit_str = d.trim_start_matches("exit:").to_string();
+                                            let mut cache = self.cache.write().await;
+                                            if let Some(s) = cache.get_mut(token) { s.running = false; }
+                                            return; // exit early
+                                        }
+                                    },
+                                    _ => {}
+                                }
                             }
                         }
                     }
+                    Err(e) => {
+                        debug!("stream read error: {}", e);
+                        break;
+                    }
                 }
             }
+            // timeout hit → mark not running
+            let mut cache = self.cache.write().await;
+            if let Some(s) = cache.get_mut(token) { s.running = false; }
+        }).await;
 
-            // Tail last 30 lines
-            let tail_n = 30;
-            let len = lines.len();
-            let start = len.saturating_sub(tail_n);
-            let mut tail = lines[start..].join("");
+        // ---- clean + tail ----
+        let ansi = Regex::new(r"\x1B\[[0-9;]*[A-Za-z]").unwrap();
+        let cleaned = ansi.replace_all(&format!("{}{}", stdout_buf, stderr_buf), "").to_string();
+        let lines: Vec<&str> = cleaned.lines().collect();
+        let tail = lines[lines.len().saturating_sub(50)..].join("\n");
 
-            if state.running {
-                tail.push_str("\n(... process still running ...)\n");
-            }
-            Ok(tail)
+        let mut out = tail;
+        if exit_str == "still running..." {
+            out.push_str("\n(... process still running ...)\n");
+            let mut cache = self.cache.write().await;
+            if let Some(s) = cache.get_mut(token) { s.running = true; }
         } else {
-            Ok("(no active session)".into())
+            out.push_str(&format!("\n(Exit code: {})\n", exit_str.trim()));
+        }
+
+        Ok(out)
+    }
+
+
+    
+    pub async fn get_file(&self, node_url: &str, path: &str) -> Result<String> {
+        let url = format!("{}/sandbox/{}", node_url.trim_end_matches('/'), path);
+        let resp = self.http.get(&url).send().await?;
+        if resp.status().is_success() {
+            Ok(resp.text().await?)
+        } else {
+            let status = resp.status();
+            let text = resp.text().await.unwrap_or_default();
+            anyhow::bail!("GET {url} failed: {} {}", status, text);
+        }
+    }
+
+    pub async fn write_file(&self, node_url: &str, path: &str, content: &str) -> Result<String> {
+        let url = format!("{}/sandbox/{}", node_url.trim_end_matches('/'), path);
+        let body = serde_json::json!({ "content": content });
+        let resp = self.http.post(&url).json(&body).send().await?;
+        if resp.status().is_success() {
+            Ok(resp.text().await?)
+        } else {
+            let status = resp.status();
+            let text = resp.text().await.unwrap_or_default();
+            anyhow::bail!("POST {url} failed: {} {}", status, text);
         }
     }
 }

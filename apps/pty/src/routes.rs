@@ -1,7 +1,7 @@
 use axum::{extract::{Path, State, Query}, routing::{get, post}, Json, Router};
 use axum::http::StatusCode;
 use serde::Deserialize;
-
+use tokio::fs;
 use crate::models::*;
 use crate::state::{AppState, ids};
 use crate::executor::{pty, spawn};
@@ -9,6 +9,8 @@ use crate::executor::{pty, spawn};
 pub fn app_router(state: AppState) -> Router {
     Router::new()
         .route("/health", get(|| async { "ok" }))
+        .route("/sandbox/*path", get(get_file))
+        .route("/sandbox/*path", post(put_file))
         .route("/exec", post(exec))
         .route("/sessions", post(start_session))
         .route("/sessions/:id/stream", get(stream_session))
@@ -22,6 +24,44 @@ pub fn app_router(state: AppState) -> Router {
 
 #[derive(Deserialize)]
 struct FromParam { from: Option<u64> }
+
+#[derive(Deserialize)]
+struct FileWriteBody {
+    content: String,
+}
+
+// GET /files/:path
+async fn get_file(
+    Path(path): Path<String>,
+) -> Result<String, (StatusCode, String)> {
+    let full_path = format!("/sandbox/{}", path); // adjust base dir if needed
+    match fs::read_to_string(&full_path).await {
+        Ok(content) => Ok(content),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            Err((StatusCode::NOT_FOUND, format!("file not found: {full_path}")))
+        }
+        Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string())),
+    }
+}
+
+// POST /files/:path
+async fn put_file(
+    Path(path): Path<String>,
+    Json(body): Json<FileWriteBody>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let full_path = format!("/sandbox/{}", path);
+    if let Some(parent) = std::path::Path::new(&full_path).parent() {
+        if let Err(e) = fs::create_dir_all(parent).await {
+            return Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string()));
+        }
+    }
+
+    match fs::write(&full_path, body.content.as_bytes()).await {
+        Ok(_) => Ok(Json(serde_json::json!({ "ok": true, "path": full_path }))),
+        Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string())),
+    }
+}
+
 
 async fn start_session(
     State(state): State<AppState>,
