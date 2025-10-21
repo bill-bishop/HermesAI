@@ -138,7 +138,7 @@ async fn status_job(
         let jobs = state.jobs.read().await;
         let Some(h) = jobs.get(&id) else { return Err((StatusCode::NOT_FOUND, "job not found".into())); };
         let exit_code = *h.exit_code.lock();
-        let seq_latest = *h.latest_seq.lock();
+        let seq_latest = h.latest_seq.load(std::sync::atomic::Ordering::Relaxed);
         let state_str = if exit_code.is_some() { "exited".into() } else { "running".into() };
         (state_str, exit_code, seq_latest)
     };

@@ -17,7 +17,7 @@ pub async fn post_terminal(
 ) -> impl IntoResponse {
     info!("POST /terminal cmd='{}' token='{}'", body.cmd, auth.token());
     match manager.execute(auth.token(), &body.cmd).await {
-        Ok(_) => (StatusCode::OK, "executed\n".to_string()),
+        Ok(output) => (StatusCode::OK, output),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("error: {e}\n")),
     }
 }

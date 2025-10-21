@@ -16,7 +16,7 @@ services:
       - hermesnet
 
   agent-api:
-    image: whb4118/hermesai-api:0.0.1
+    image: whb4118/hermesai-api:latest
     #    build: ./apps/pty
     container_name: hermesai-api
     volumes:
@@ -29,9 +29,12 @@ services:
       - RUST_LOG=debug
 
   grace-pty:
-    image: whb4118/hermesai-pty:0.0.1
+    image: whb4118/hermesai-pty:latest
     #    build: ./apps/pty
     container_name: hermesai-grace-pty
+    working_dir: /sandbox
+    volumes:
+      - ${GRACE_SANDBOX_VOLUME:-../grace-sandbox}:/sandbox
     expose:
       - "8080"
     networks:
@@ -39,9 +42,12 @@ services:
 
 
   will-pty:
-    image: whb4118/hermesai-pty:0.0.1
+    image: whb4118/hermesai-pty:latest
 #    build: ./apps/pty
     container_name: hermesai-will-pty
+    working_dir: /sandbox
+    volumes:
+      - ${WILL_SANDBOX_VOLUME:-../will-sandbox}:/sandbox
     expose:
       - "8080"
     networks:

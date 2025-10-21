@@ -35,8 +35,18 @@ impl NodeClient {
         }
     }
 
-    /// Send command to PTY
+    /// Send command to PTY and wait up to ~10s for output
     pub async fn post_exec(&self, node_url: &str, token: &str, cmd: &str) -> Result<String> {
+        use serde::Deserialize;
+        use tokio::time::{timeout, Duration};
+        use futures_util::StreamExt;
+
+        #[derive(Deserialize)]
+        struct Frame {
+            t: Option<String>,
+            d: Option<String>,
+        }
+
         let url = format!("{}/exec", node_url.trim_end_matches('/'));
         debug!("POST to PTY node {}", url);
 
@@ -50,7 +60,7 @@ impl NodeClient {
 
         let exec_resp: ExecResponse = resp.json().await?;
         let job_id = exec_resp.job_id.clone();
-        
+
         // mark node as active
         {
             let mut cache = self.cache.write().await;
@@ -59,19 +69,87 @@ impl NodeClient {
             state.last_job_id = Some(job_id.clone());
         }
 
-        // start background reader
-        let client = self.clone();
-        let token = token.to_string();
-        let node_url = node_url.to_string();
-        let retid = job_id.clone();
-        tokio::spawn(async move {
-            if let Err(e) = client.stream_plain_background(&node_url, &token, &job_id).await {
-                info!("background stream failed: {e}");
-            }
-        });
+        // ---- actively collect output for up to 10s ----
+        let mut stdout_buf = String::new();
+        let mut stderr_buf = String::new();
+        let mut exit_str = String::from("still running...");
 
-        Ok(retid)
+        let stream_url = format!("{}/stream/{}?from=0", node_url.trim_end_matches('/'), job_id);
+        let resp = self.http.get(&stream_url).send().await?;
+        let mut stream = resp.bytes_stream();
+
+        let _ = timeout(Duration::from_secs(10), async {
+            while let Some(chunk) = stream.next().await {
+                match chunk {
+                    Ok(bytes) => {
+                        for line in String::from_utf8_lossy(&bytes).lines() {
+                            if line.trim().is_empty() {
+                                continue;
+                            }
+                            if let Ok(frame) = serde_json::from_str::<Frame>(line) {
+                                match frame.t.as_deref() {
+                                    Some("stdout") => {
+                                        if let Some(d) = frame.d { stdout_buf.push_str(&d); }
+                                    }
+                                    Some("stderr") => {
+                                        if let Some(d) = frame.d { stderr_buf.push_str(&d); }
+                                    }
+                                    Some("event") => {
+                                        if let Some(d) = frame.d {
+                                            if d.starts_with("exit:") {
+                                                exit_str = d.trim_start_matches("exit:").to_string();
+                                                return; // end early
+                                            }
+                                        }
+                                    }
+                                    _ => {}
+                                }
+                            } else {
+                                debug!("non-JSON stream fragment: {}", line);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        debug!("stream read error: {}", e);
+                        break;
+                    }
+                }
+            }
+        }).await;
+
+        // ---- truncate if too long ----
+        const LIMIT: usize = 1000;
+        let truncate = |s: &mut String| {
+            if s.len() > LIMIT {
+                s.truncate(LIMIT);
+                s.push_str("\n[...truncated]");
+            }
+        };
+        truncate(&mut stdout_buf);
+        truncate(&mut stderr_buf);
+
+        // normalize exit
+        let exit_display = if exit_str == "still running..." {
+            exit_str.clone()
+        } else {
+            exit_str
+                .trim_start_matches("Some(")
+                .trim_end_matches(')')
+                .trim()
+                .to_string()
+        };
+
+        // ---- format summary ----
+        let summary = format!(
+            "STDOUT:\n{}\n\nSTDERR:\n{}\n\nEXIT CODE:\n{}",
+            stdout_buf.trim_end(),
+            stderr_buf.trim_end(),
+            exit_display
+        );
+
+        Ok(summary)
     }
+
 
     async fn stream_plain_background(&self, node_url: &str, token: &str, job_id: &str) -> Result<()> {
         let url = format!("{}/stream/{}?from=0", node_url.trim_end_matches('/'), job_id);
@@ -84,6 +162,7 @@ impl NodeClient {
             match chunk {
                 Ok(bytes) => {
                     let data = String::from_utf8_lossy(&bytes);
+                    info!("stream read String::from_utf8_lossy(&bytes): {}", data);
                     let cleaned = self.ansi_re.replace_all(&data, "").to_string();
                     let mut cache = self.cache.write().await;
                     let entry = cache.entry(token.to_string()).or_default();

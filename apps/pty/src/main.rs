@@ -8,7 +8,7 @@ mod io;
 mod config;
 mod routes;
 
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread", worker_threads = 2)]
 async fn main() -> anyhow::Result<()> {
     // Initialize logging
     fmt().with_env_filter(EnvFilter::from_default_env()).init();

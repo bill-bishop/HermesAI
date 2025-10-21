@@ -2,6 +2,7 @@ use crate::models::StreamFrame;
 use parking_lot::Mutex;
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
+use std::sync::atomic::AtomicU64;
 use tokio::io::unix::AsyncFd;
 use tokio::sync::{broadcast, RwLock};
 
@@ -21,7 +22,7 @@ impl AppState {
 }
 
 pub struct JobHandle {
-    pub latest_seq: Arc<Mutex<u64>>,
+    pub latest_seq: Arc<AtomicU64>,
     pub tx: broadcast::Sender<StreamFrame>,
     pub exit_code: Arc<Mutex<Option<i32>>>,
     pub backlog: Arc<Mutex<VecDeque<StreamFrame>>>,

@@ -37,9 +37,9 @@ impl SessionManager {
     pub async fn execute(&self, token: &str, cmd: &str) -> Result<String> {
         if let Some(node) = self.resolve_node(token) {
             info!("Executing '{}' on {}", cmd, node);
-            let job_id = self.client.post_exec(&node, token, cmd).await?;
-            info!("Created job {}", job_id);
-            Ok(job_id)
+            let output = self.client.post_exec(&node, token, cmd).await?;
+            info!("Created job {}", output);
+            Ok(output)
         } else {
             anyhow::bail!("unknown token {token}");
         }

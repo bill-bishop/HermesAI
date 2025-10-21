@@ -1,9 +1,9 @@
 use axum::response::IntoResponse;
 use futures_util::stream::{self, StreamExt};
 use tokio::sync::broadcast;
-
-use crate::models::StreamFrame;
+use bytes::Bytes;
 use serde_json::json;
+use crate::models::StreamFrame;
 
 pub fn ndjson_stream_with_backlog(
     mut backlog: Vec<StreamFrame>,
@@ -12,37 +12,42 @@ pub fn ndjson_stream_with_backlog(
 ) -> impl IntoResponse {
     backlog.sort_by_key(|f| f.seq);
 
-    // Past frames (resume support)
+    let banner = stream::once(async {
+        let s = json!({"t":"event","seq":0,"d":"stream-start"}).to_string() + "\n";
+        Ok::<Bytes, std::convert::Infallible>(Bytes::from(s))
+    });
+
     let past = backlog
         .into_iter()
         .filter(move |f| f.seq > from)
-        .map(|f| Ok::<String, std::convert::Infallible>(serde_json::to_string(&f).unwrap() + "\n"));
+        .map(|f| {
+            let line = serde_json::to_string(&f).unwrap() + "\n";
+            Ok::<Bytes, std::convert::Infallible>(Bytes::from(line))
+        });
 
-    // Live frames: stop the stream after emitting an `exit:*` event
     let live = stream::unfold((rx, false), |(mut r, done)| async move {
-        if done {
-            return None;
-        }
+        if done { return None; }
         match r.recv().await {
             Ok(f) => {
                 let is_exit = f.t == "event" && f.d.starts_with("exit:");
                 let line = serde_json::to_string(&f).unwrap() + "\n";
-                Some((Ok::<String, std::convert::Infallible>(line), (r, is_exit)))
+                tokio::task::yield_now().await; // nudge hyper to flush
+                Some((Ok::<Bytes, std::convert::Infallible>(Bytes::from(line)), (r, is_exit)))
             }
-            // If we lagged, keep going; emit nothing
-            Err(broadcast::error::RecvError::Lagged(_)) => Some((Ok(String::new()), (r, false))),
-            // Channel closed → end stream
+            Err(broadcast::error::RecvError::Lagged(_)) => {
+                tokio::task::yield_now().await;
+                Some((Ok(Bytes::new()), (r, false)))
+            }
             Err(_) => None,
         }
     });
 
-    // Banner then backlog then live
-    let banner = stream::once(async {
-        Ok::<String, std::convert::Infallible>(
-            json!({"t":"event","seq":0,"d":"stream-start"}).to_string() + "\n",
-        )
-    });
-
     let all = banner.chain(stream::iter(past)).chain(live);
-    axum::response::Response::new(axum::body::Body::from_stream(all))
+
+    axum::response::Response::builder()
+        .status(200)
+        .header("content-type", "application/x-ndjson")
+        .header("transfer-encoding", "chunked")
+        .body(axum::body::Body::from_stream(all))
+        .unwrap()
 }
