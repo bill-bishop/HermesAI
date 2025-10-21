@@ -20,7 +20,8 @@ pub async fn spawn_noninteractive(cmd: Vec<String>, cwd: Option<String>) -> JobH
     c.stderr(std::process::Stdio::piped());
     c.env("TERM", "xterm");
 
-    let mut child = c.spawn().expect("spawn failed");
+    let child = Arc::new(tokio::sync::Mutex::new(c.spawn().expect("spawn failed")));
+    let child_watcher = Arc::clone(&child);
 
     // Shared state
     let (tx, _rx) = tokio::sync::broadcast::channel::<StreamFrame>(BACKLOG_CAP);
@@ -48,7 +49,7 @@ pub async fn spawn_noninteractive(cmd: Vec<String>, cwd: Option<String>) -> JobH
     push("event", "stream-start".into());
 
     // Spawn readers and keep their JoinHandles
-    let stdout_task = if let Some(out) = child.stdout.take() {
+    let stdout_task = if let Some(out) = child_watcher.lock().await.stdout.take() {
         let push = push.clone();
         Some(tokio::spawn(async move {
             let mut reader = BufReader::new(out);
@@ -76,7 +77,7 @@ pub async fn spawn_noninteractive(cmd: Vec<String>, cwd: Option<String>) -> JobH
         None
     };
 
-    let stderr_task = if let Some(err) = child.stderr.take() {
+    let stderr_task = if let Some(err) = child_watcher.lock().await.stderr.take() {
         let push = push.clone();
         Some(tokio::spawn(async move {
             let mut reader = BufReader::new(err);
@@ -109,7 +110,7 @@ pub async fn spawn_noninteractive(cmd: Vec<String>, cwd: Option<String>) -> JobH
         let exit_code = Arc::clone(&exit_code);
         let push = push.clone();
         tokio::spawn(async move {
-            let code = match child.wait().await {
+            let code = match child_watcher.lock().await.wait().await {
                 Ok(status) => status.code(),
                 Err(e) => {
                     push("event", format!("wait-error:{e}"));
@@ -127,5 +128,5 @@ pub async fn spawn_noninteractive(cmd: Vec<String>, cwd: Option<String>) -> JobH
     }
 
     tokio::task::yield_now().await;
-    JobHandle { latest_seq, tx, exit_code, backlog }
+    JobHandle { latest_seq, tx, exit_code, backlog, child }
 }

@@ -18,6 +18,7 @@ pub fn app_router(state: AppState) -> Router {
         .route("/sessions/:id/resize", post(resize_session))
         .route("/sessions/:id/close", post(close_session))
         .route("/stream/:id", get(stream_job))
+        .route("/stream/:id/close", post(close_job_stream))
         .route("/status/:id", get(status_job))
         .with_state(state)
 }
@@ -155,6 +156,7 @@ async fn exec(
     }))
 }
 
+
 async fn stream_job(
     State(state): State<AppState>,
     Path(id): Path<String>,
@@ -169,6 +171,37 @@ async fn stream_job(
     };
     Ok(crate::io::stream::ndjson_stream_with_backlog(backlog, rx, q.from.unwrap_or(0)))
 }
+
+/// POST /stream/:id/close — gracefully close a running job stream
+async fn close_job_stream(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    use tracing::info;
+
+    let mut jobs = state.jobs.write().await;
+    if let Some(mut handle) = jobs.remove(&id) {
+        info!("Closing job {}", id);
+
+        // Try to kill the process
+        if let Ok(mut child) = handle.child.lock().await.try_wait() {
+            if child.is_none() {
+                info!("Job {} already exited", id);
+            } else {
+                if let Err(e) = handle.child.lock().await.kill().await {
+                    info!("Job {} kill failed: {}", id, e);
+                } else {
+                    info!("Job {} terminated successfully", id);
+                }
+            }
+        }
+
+        Ok(Json(serde_json::json!({ "ok": true, "closed": id })))
+    } else {
+        Err((StatusCode::NOT_FOUND, format!("job {id} not found")))
+    }
+}
+
 
 async fn status_job(
     State(state): State<AppState>,

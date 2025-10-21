@@ -4,6 +4,7 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
 use tokio::io::unix::AsyncFd;
+use tokio::process::Child;
 use tokio::sync::{broadcast, RwLock};
 
 #[derive(Clone)]
@@ -26,6 +27,7 @@ pub struct JobHandle {
     pub tx: broadcast::Sender<StreamFrame>,
     pub exit_code: Arc<Mutex<Option<i32>>>,
     pub backlog: Arc<Mutex<VecDeque<StreamFrame>>>,
+    pub child: Arc<tokio::sync::Mutex<Child>>,
 }
 
 #[derive(Clone)]

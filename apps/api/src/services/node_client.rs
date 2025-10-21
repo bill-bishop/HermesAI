@@ -48,6 +48,30 @@ impl NodeClient {
             d: Option<String>,
         }
 
+        {
+            let mut cache = self.cache.write().await;
+            let state = cache.entry(token.to_string()).or_default();
+
+            // if previous job still running, politely tell PTY to stop streaming
+            if state.running {
+                if let Some(prev_job) = &state.last_job_id {
+                    let close_url = format!("{}/stream/{}/close", node_url.trim_end_matches('/'), prev_job);
+                    info!("Attempting to kill running job {}", close_url);
+                    match self.http.post(&close_url).send().await {
+                        Ok(resp) if resp.status().is_success() => {
+                            info!("Closed previous session {} successfully", prev_job);
+                        }
+                        Ok(resp) => {
+                            info!("Tried to close previous session {}, but got HTTP {}", prev_job, resp.status());
+                        }
+                        Err(e) => {
+                            info!("Error closing previous session {}: {}", prev_job, e);
+                        }
+                    }
+                }
+            }
+        }
+
         let url = format!("{}/exec", node_url.trim_end_matches('/'));
         debug!("POST to PTY node {}", url);
 
@@ -66,10 +90,12 @@ impl NodeClient {
         {
             let mut cache = self.cache.write().await;
             let state = cache.entry(token.to_string()).or_default();
+
             state.running = true;
             state.last_job_id = Some(job_id.clone());
-            state.backlog.clear();                // <-- reset backlog each run
+            state.backlog.clear();
         }
+
 
         // ---- actively collect output for up to 10s ----
         let mut stdout_buf = String::new();
