@@ -34,7 +34,7 @@ impl NodeClient {
             cache: Arc::new(RwLock::new(std::collections::HashMap::new())),
         }
     }
-
+    
     /// Send command to PTY and wait up to ~10s for output
     pub async fn post_exec(&self, node_url: &str, token: &str, cmd: &str) -> Result<String> {
         use serde::Deserialize;
@@ -67,6 +67,7 @@ impl NodeClient {
             let state = cache.entry(token.to_string()).or_default();
             state.running = true;
             state.last_job_id = Some(job_id.clone());
+            state.backlog.clear();                // <-- reset backlog each run
         }
 
         // ---- actively collect output for up to 10s ----
@@ -86,6 +87,15 @@ impl NodeClient {
                             if line.trim().is_empty() {
                                 continue;
                             }
+
+                            // append to cache backlog so /terminal can read it
+                            {
+                                let mut cache = self.cache.write().await;
+                                let state = cache.entry(token.to_string()).or_default();
+                                state.backlog.push_str(line);
+                                state.backlog.push('\n');
+                            }
+
                             if let Ok(frame) = serde_json::from_str::<Frame>(line) {
                                 match frame.t.as_deref() {
                                     Some("stdout") => {
@@ -98,6 +108,11 @@ impl NodeClient {
                                         if let Some(d) = frame.d {
                                             if d.starts_with("exit:") {
                                                 exit_str = d.trim_start_matches("exit:").to_string();
+                                                // mark stopped
+                                                let mut cache = self.cache.write().await;
+                                                if let Some(state) = cache.get_mut(token) {
+                                                    state.running = false;
+                                                }
                                                 return; // end early
                                             }
                                         }
@@ -114,6 +129,12 @@ impl NodeClient {
                         break;
                     }
                 }
+            }
+
+            // ensure running=false even if timeout hit
+            let mut cache = self.cache.write().await;
+            if let Some(state) = cache.get_mut(token) {
+                state.running = false;
             }
         }).await;
 
@@ -149,6 +170,7 @@ impl NodeClient {
 
         Ok(summary)
     }
+
 
     pub async fn get_terminal_tail(&self, token: &str) -> Result<String> {
         let cache = self.cache.read().await;
