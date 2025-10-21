@@ -16,11 +16,20 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build all HermesAI images
-        run: |
-          docker build -t whb4118/hermesai-db:latest ./apps/database
-          docker build -t whb4118/hermesai-api:latest ./apps/api
-          docker build -t whb4118/hermesai-pty:latest ./apps/pty
-          docker build -t whb4118/hermesai-flask:latest ./apps/execution-sandbox/sandbox_server
-          docker build -t whb4118/hermesai-client:latest ./apps/dropcode-client
-          docker build -t whb4118/hermesai-router:latest ./apps/execution-sandbox/terminal
+      - name: Build Database Image
+        run: docker build -t whb4118/hermesai-db:latest ./apps/database
+
+      - name: Build API Image
+        run: docker build -t whb4118/hermesai-api:latest ./apps/api
+
+      - name: Build PTY Image
+        run: docker build -t whb4118/hermesai-pty:latest ./apps/pty
+
+      - name: Build Backend Image
+        run: docker build -t whb4118/hermesai-flask:latest ./apps/execution-sandbox/sandbox_server
+
+      - name: Build Frontend Image
+        run: docker build -t whb4118/hermesai-client:latest ./apps/dropcode-client
+
+      - name: Build Router Image
+        run: docker build -t whb4118/hermesai-router:latest ./apps/execution-sandbox/terminal
