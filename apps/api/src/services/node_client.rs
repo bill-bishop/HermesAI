@@ -150,44 +150,6 @@ impl NodeClient {
         Ok(summary)
     }
 
-
-    async fn stream_plain_background(&self, node_url: &str, token: &str, job_id: &str) -> Result<()> {
-        let url = format!("{}/stream/{}?from=0", node_url.trim_end_matches('/'), job_id);
-        info!("stream_plain_background from {}", url);
-
-        let resp = self.http.get(&url).send().await?;
-        let mut stream = resp.bytes_stream();
-
-        while let Some(chunk) = stream.next().await {
-            match chunk {
-                Ok(bytes) => {
-                    let data = String::from_utf8_lossy(&bytes);
-                    info!("stream read String::from_utf8_lossy(&bytes): {}", data);
-                    let cleaned = self.ansi_re.replace_all(&data, "").to_string();
-                    let mut cache = self.cache.write().await;
-                    let entry = cache.entry(token.to_string()).or_default();
-                    entry.backlog.push_str(&cleaned);
-                    if entry.backlog.len() > 4096 {
-                        let start = entry.backlog.len() - 4096;
-                        entry.backlog = entry.backlog[start..].to_string();
-                    }
-                }
-                Err(e) => {
-                    info!("stream read error: {}", e);
-                    break;
-                }
-            }
-        }
-
-        // mark session inactive
-        let mut cache = self.cache.write().await;
-        if let Some(entry) = cache.get_mut(token) {
-            entry.running = false;
-        }
-
-        Ok(())
-    }
-
     pub async fn get_terminal_tail(&self, token: &str) -> Result<String> {
         let cache = self.cache.read().await;
         if let Some(state) = cache.get(token) {
