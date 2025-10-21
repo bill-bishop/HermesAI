@@ -1,5 +1,6 @@
 use axum::{extract::{Path, State, Query}, routing::{get, post}, Json, Router};
 use axum::http::StatusCode;
+use tower_http::services::ServeDir;
 use serde::Deserialize;
 use tokio::fs;
 use crate::models::*;
@@ -7,6 +8,9 @@ use crate::state::{AppState, ids};
 use crate::executor::{pty, spawn};
 
 pub fn app_router(state: AppState) -> Router {
+    // Serve static files from /sandbox/preview on the host
+    let preview_service = ServeDir::new("/sandbox/preview");
+    
     Router::new()
         .route("/health", get(|| async { "ok" }))
         .route("/sandbox/*path", get(get_file))
@@ -20,6 +24,7 @@ pub fn app_router(state: AppState) -> Router {
         .route("/stream/:id", get(stream_job))
         .route("/stream/:id/close", post(close_job_stream))
         .route("/status/:id", get(status_job))
+        .nest_service("/preview", preview_service) // 👈 serve static files here
         .with_state(state)
 }
 
