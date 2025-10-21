@@ -1,4 +1,4 @@
-name: Build All HermesAI Docker Images (No Push)
+name: Build Core HermesAI Docker Images (No Push)
 
 on:
   push:
@@ -25,11 +25,5 @@ jobs:
       - name: Build PTY Image
         run: docker build -t whb4118/hermesai-pty:latest ./apps/pty
 
-      - name: Build Backend Image
-        run: docker build -t whb4118/hermesai-flask:latest ./apps/execution-sandbox/sandbox_server
-
       - name: Build Frontend Image
         run: docker build -t whb4118/hermesai-client:latest ./apps/dropcode-client
-
-      - name: Build Router Image
-        run: docker build -t whb4118/hermesai-router:latest ./apps/execution-sandbox/terminal
