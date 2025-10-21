@@ -1,7 +1,3 @@
-Absolutely — here’s your full **HermesAI Agent API (v0.1)** spec, written in the same concise, production-ready style you used for `/agent/sandbox`.
-
----
-
 ## ⚙️ **HermesAI Agent API (v0.1)**
 
 Base URL: `https://hermesai.dev/agent`
@@ -134,5 +130,3 @@ curl -X POST \
 | `/agent/sandbox/{*path}` | `POST` | Write a sandbox file       |
 
 ---
-
-Everything now maps 1-to-1 to your per-user PTY containers and `/sandbox/` volumes — concise, self-contained, and ready for docs or API consumers.
