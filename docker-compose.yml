@@ -20,7 +20,7 @@ services:
     #    build: ./apps/pty
     container_name: hermesai-api
     volumes:
-      - ${TOKEN_MAP_PATH:-./apps/api/tokens}:/4d24721f7fe5084b6f4e0c93eca86954:ro
+      - ${TOKEN_MAP_PATH:-./4d24721f7fe5084b6f4e0c93eca86954}:/4d24721f7fe5084b6f4e0c93eca86954:ro
     expose:
       - "8081"
     networks:
