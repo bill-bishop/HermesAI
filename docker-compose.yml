@@ -84,14 +84,15 @@ services:
       - hermesnet
 
   router:
-    image: whb4118/hermesai-router:latest
-#    build: ./apps/execution-sandbox/terminal
+#    image: whb4118/hermesai-router:latest
+    build: ./apps/execution-sandbox/terminal
     container_name: hermesai-router
     depends_on:
       - frontend
       - backend
       - agent-api
       - certbot
+      - oauth2-proxy
     ports:
       - "80:80"
       - "443:443"
@@ -108,6 +109,27 @@ services:
       timeout: 10s
       retries: 5
     restart: always
+
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.6.0
+    container_name: hermesai-auth
+    expose: ["4180"]
+    environment:
+      OAUTH2_PROXY_PROVIDER: "oidc"
+      OAUTH2_PROXY_OIDC_ISSUER_URL: ${OAUTH2_PROXY_OIDC_ISSUER_URL}
+      OAUTH2_PROXY_CLIENT_ID: ${OAUTH2_PROXY_CLIENT_ID}
+      OAUTH2_PROXY_CLIENT_SECRET: ${OAUTH2_PROXY_CLIENT_SECRET}
+      OAUTH2_PROXY_COOKIE_SECRET: ${OAUTH2_PROXY_COOKIE_SECRET}
+      OAUTH2_PROXY_COOKIE_SECURE: "true"
+      OAUTH2_PROXY_EMAIL_DOMAINS: "*"
+      OAUTH2_PROXY_REDIRECT_URL: ${OAUTH2_PROXY_REDIRECT_URL}
+      OAUTH2_PROXY_REVERSE_PROXY: "true"   # trust X-Forwarded-* from NGINX
+      OAUTH2_PROXY_SCOPE: "openid profile email"
+      OAUTH2_PROXY_HTTP_ADDRESS: "0.0.0.0:4180"     # <-- key change
+      OAUTH2_PROXY_SET_XAUTHREQUEST: "true"
+      OAUTH2_PROXY_PASS_AUTHORIZATION_HEADER: "true"
+      OAUTH2_PROXY_SET_AUTHORIZATION_HEADER: "true"
+    networks: [ hermesnet ]
 
   # self-signed cert
   certbot:
