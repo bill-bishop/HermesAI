@@ -84,8 +84,8 @@ services:
       - hermesnet
 
   router:
-#    image: whb4118/hermesai-router:latest
-    build: ./apps/execution-sandbox/terminal
+    image: whb4118/hermesai-router:latest
+#    build: ./apps/execution-sandbox/terminal
     container_name: hermesai-router
     depends_on:
       - frontend
